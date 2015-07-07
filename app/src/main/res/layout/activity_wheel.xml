@@ -63,7 +63,7 @@
         android:layout_above="@+id/cxem_logo"
         android:layout_centerHorizontal="true" />
 
-     <com.cxem_car.VerticalSeekBar
+     <com.picCAR.VerticalSeekBar
          android:id="@+id/calcVerticalSeekBar"
          android:layout_width="wrap_content"
          android:layout_height="match_parent"
