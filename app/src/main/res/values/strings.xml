@@ -2,9 +2,11 @@
 <resources>
     
     <string name="app_name">picCAR</string>
-    <string name="app_name_version">picCAR 1.0.1</string>
-    <string name="menu_settings">Settings</string>
-    
+    <string name="app_name_version">picCAR 1.1</string>
+    <string name="menu_app_settings">APP Settings</string>
+    <string name="menu_ssc_settings">SSC Settings</string>
+    <string name="menu_about">About picCAR</string>
+
     <string name="title_activity_main">picCAR</string>
     <string name="title_activity_accelerometer">picCAR - Accelerometer control</string>
     <string name="title_activity_wheel">picCAR - Virtual Wheel</string>
@@ -20,9 +22,7 @@
     <string name="btn_wheel">Wheel control</string>    
     <string name="btn_button">Button control</string>
     <string name="btn_touch">Touch control</string>
-    <string name="btn_mcu">MCU settings</string>
-    <string name="btn_about">About</string>
-    
+
     <string name="forward">forward</string>
     <string name="backward">backward</string>
     <string name="left">left</string>
@@ -46,12 +46,12 @@
     <string name="default_xMax">7</string>
     <string name="default_yMax">5</string>  
     <string name="default_yThreshold">50</string> 
-    <string name="default_pwmMax">200</string>
+    <string name="default_pwmMax">126</string>
     <string name="default_commandLeft">1=</string>
     <string name="default_commandRight">2=</string>
     <string name="default_commandHorn">3=</string>
     <string name="default_pwmBtnMotorLeft">1490</string>
     <string name="default_pwmBtnMotorRight">1490</string>
-    <string name="default_xRperc">60</string>
+    <string name="default_xRperc">50</string>
 	
 </resources>

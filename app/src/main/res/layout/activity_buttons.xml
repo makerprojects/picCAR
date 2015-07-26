@@ -15,44 +15,67 @@
         android:paddingBottom="5dp"
         android:paddingRight="5dp"
         android:src="@drawable/cxemnet_logo" />
-   
-    <ToggleButton
-        android:id="@+id/LightButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_centerHorizontal="true"
-        android:layout_centerVertical="true" />
 
-    <Button
-        android:id="@+id/forward"
+    <RelativeLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_above="@+id/LightButton"
-        android:layout_centerHorizontal="true"
-        android:text="@string/forward" />
+        android:layout_below="@id/textView1"
+        android:paddingTop="20dp">
 
-    <Button
-        android:id="@+id/backward"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_below="@+id/LightButton"
-        android:layout_centerHorizontal="true"
-        android:text="@string/backward" />
+        <Button
+            android:id="@+id/forward"
+            android:layout_width="180dp"
+            android:layout_height="80dp"
+            android:gravity="left|center_vertical"
+            android:layout_alignParentLeft="true"
+            android:text="@string/forward"
+            android:textSize="20sp" />
 
-    <Button
-        android:id="@+id/left"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_centerVertical="true"
-        android:layout_toLeftOf="@+id/LightButton"
-        android:text="@string/left" />
+        <Button
+            android:id="@+id/right"
+            android:layout_width="180dp"
+            android:layout_height="80dp"
+            android:gravity="right|center_vertical"
+            android:layout_alignParentRight="true"
+            android:text="@string/right"
+            android:textSize="20sp" />
+    </RelativeLayout>
 
-    <Button
-        android:id="@+id/right"
+    <RelativeLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_centerVertical="true"
-        android:layout_toRightOf="@+id/LightButton"
-        android:text="@string/right" />
+        android:layout_below="@id/textView1"
+        android:paddingTop="120dp">
+
+        <Button
+            android:id="@+id/backward"
+            android:layout_width="180dp"
+            android:layout_height="80dp"
+            android:gravity="left|center_vertical"
+            android:text="@string/backward"
+            android:textSize="20sp" />
+
+        <Button
+            android:id="@+id/left"
+            android:layout_width="180dp"
+            android:layout_height="80dp"
+            android:gravity="right|center_vertical"
+            android:layout_alignParentRight="true"
+            android:text="@string/left"
+            android:textSize="20sp"/>
+
+        <ImageView
+            android:id="@+id/logo_final"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:alpha="0.35"
+            android:contentDescription="@+id/app_name"
+            android:paddingBottom="5dp"
+            android:paddingRight="5dp"
+            android:src="@drawable/logo_final"
+            android:layout_alignParentBottom="true"
+            android:layout_centerHorizontal="true" />
+
+    </RelativeLayout>
 
 </RelativeLayout>

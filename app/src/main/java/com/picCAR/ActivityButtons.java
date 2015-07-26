@@ -22,32 +22,33 @@ import android.widget.ToggleButton;
 public class ActivityButtons extends Activity {
 	
 	private cBluetooth bl = null;
-	private ToggleButton LightButton;
+/*	private ToggleButton LightButton; */
 	
 	private Button btn_forward, btn_backward, btn_left, btn_right;
-	
-    private int motorLeft = 0;
-    private int motorRight = 0;
-    private String address;			// MAC-address from settings 
-    // private boolean BT_is_connect;	// bluetooth is connected     
-    private int pwmBtnMotorLeft;	// left PWM constant value from settings 
-    private int pwmBtnMotorRight;	// right PWM constant value from settings 
-    private String commandLeft;		// command symbol for left motor from settings 
-    private String commandRight;	// command symbol for right motor from settings 
-    private String commandHorn;		// command symbol for optional command (for example - horn) from settings 
-	  
+
+	private final int cCommandHeader = 0xFF; // equals 0xFF
+	private final byte cChannelLeft = 0;
+	private final byte cChannelRight = 1;
+	private final int cChannelNeutral = 0x7F;
+	private final int cChannelMax = 0xFE; // equals 0xFE
+	private final byte cChannelMin = 0;
+	private String address;			// MAC-address from settings
+    private byte[] commandLeft = {(byte)cCommandHeader, cChannelLeft, (byte) cChannelNeutral};	// command buffer for left motor
+    private byte[] commandRight = {(byte) cCommandHeader,cChannelRight, (byte) cChannelNeutral}; // command buffer for right motor
+//    private String commandHorn;		// command symbol for optional command (for example - horn) from settings
+
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_buttons);
 		
 		address = (String) getResources().getText(R.string.default_MAC);
-		pwmBtnMotorLeft = Integer.parseInt((String) getResources().getText(R.string.default_pwmBtnMotorLeft));
-		pwmBtnMotorRight = Integer.parseInt((String) getResources().getText(R.string.default_pwmBtnMotorRight));
-        commandLeft = (String) getResources().getText(R.string.default_commandLeft);
-        commandRight = (String) getResources().getText(R.string.default_commandRight);
-        commandHorn = (String) getResources().getText(R.string.default_commandHorn);
-		
+//		pwmBtnMotorLeft = Integer.parseInt((String) getResources().getText(R.string.default_pwmBtnMotorLeft));
+//		pwmBtnMotorRight = Integer.parseInt((String) getResources().getText(R.string.default_pwmBtnMotorRight));
+//        commandLeft = (String) getResources().getText(R.string.default_commandLeft);
+//        commandRight = (String) getResources().getText(R.string.default_commandRight);
+//        commandHorn = (String) getResources().getText(R.string.default_commandHorn);
+
 		loadPref();
 		
 	    bl = new cBluetooth(this, mHandler);
@@ -61,18 +62,18 @@ public class ActivityButtons extends Activity {
 		btn_forward.setOnTouchListener(new OnTouchListener() {
 			public boolean onTouch(View v, MotionEvent event) {
 		        if(event.getAction() == MotionEvent.ACTION_MOVE) {
-		        	motorLeft = 1300;
-		        	motorRight = 1700;
+					commandLeft[2] = cChannelMin; // commands for miniSSC
+					commandRight[2] = (byte) cChannelMax; // commands for miniSSC
 		        	if (bl.getState() == cBluetooth.STATE_CONNECTED) {
-		        		bl.sendData(String.valueOf(commandLeft+motorLeft));
-		        		bl.sendData(String.valueOf(commandRight+motorRight));
+						bl.sendDataByte(commandLeft);
+						bl.sendDataByte(commandRight);
 		        	}
 		        } else if (event.getAction() == MotionEvent.ACTION_UP) {
-		        	motorLeft = pwmBtnMotorLeft;
-		        	motorRight = pwmBtnMotorRight;
+					commandLeft[2] = cChannelNeutral; // commands for miniSSC
+					commandRight[2] = cChannelNeutral; // commands for miniSSC
 		        	if (bl.getState() == cBluetooth.STATE_CONNECTED) {
-		        		bl.sendData(String.valueOf(commandLeft+motorLeft));
-		        		bl.sendData(String.valueOf(commandRight+motorRight));
+						bl.sendDataByte(commandLeft);
+						bl.sendDataByte(commandRight);
 		        	}
 		        }
 				return false;
@@ -82,18 +83,18 @@ public class ActivityButtons extends Activity {
 		btn_left.setOnTouchListener(new OnTouchListener() {
 			public boolean onTouch(View v, MotionEvent event) {
 		        if(event.getAction() == MotionEvent.ACTION_MOVE) {
-		        	motorLeft = 1300;
-		        	motorRight = 1300;
+					commandLeft[2] = cChannelMin; // commands for miniSSC
+					commandRight[2] = cChannelMin; // commands for miniSSC
 		        	if (bl.getState() == cBluetooth.STATE_CONNECTED) {
-		        		bl.sendData(String.valueOf(commandLeft+motorLeft));
-		        		bl.sendData(String.valueOf(commandRight+motorRight));
+						bl.sendDataByte(commandLeft);
+						bl.sendDataByte(commandRight);
 		        	}
 		        } else if (event.getAction() == MotionEvent.ACTION_UP) {
-		        	motorLeft = pwmBtnMotorLeft;
-		        	motorRight = pwmBtnMotorRight;
+					commandLeft[2] = cChannelNeutral; // commands for miniSSC
+					commandRight[2] = cChannelNeutral; // commands for miniSSC
 		        	if (bl.getState() == cBluetooth.STATE_CONNECTED) {
-		        		bl.sendData(String.valueOf(commandLeft+motorLeft));
-		        		bl.sendData(String.valueOf(commandRight+motorRight));
+						bl.sendDataByte(commandLeft);
+						bl.sendDataByte(commandRight);
 		        	}
 		        }
 				return false;
@@ -103,18 +104,18 @@ public class ActivityButtons extends Activity {
 		btn_right.setOnTouchListener(new OnTouchListener() {
 			public boolean onTouch(View v, MotionEvent event) {
 		        if(event.getAction() == MotionEvent.ACTION_MOVE) {
-		        	motorLeft = 1700;
-		        	motorRight = 1700;
+					commandLeft[2] = (byte) cChannelMax; // commands for miniSSC
+					commandRight[2] = (byte) cChannelMax; // commands for miniSSC
 		        	if (bl.getState() == cBluetooth.STATE_CONNECTED) {
-		        		bl.sendData(String.valueOf(commandLeft+motorLeft));
-		        		bl.sendData(String.valueOf(commandRight+motorRight));
+						bl.sendDataByte(commandLeft);
+						bl.sendDataByte(commandRight);
 		        	}
 		        } else if (event.getAction() == MotionEvent.ACTION_UP) {
-		        	motorLeft = pwmBtnMotorLeft;
-		        	motorRight = pwmBtnMotorRight;
+					commandLeft[2] = cChannelNeutral; // commands for miniSSC
+					commandRight[2] = cChannelNeutral; // commands for miniSSC
 		        	if (bl.getState() == cBluetooth.STATE_CONNECTED) {
-		        		bl.sendData(String.valueOf(commandLeft+motorLeft));
-		        		bl.sendData(String.valueOf(commandRight+motorRight));
+						bl.sendDataByte(commandLeft);
+						bl.sendDataByte(commandRight);
 		        	}
 		        }
 				return false;
@@ -124,35 +125,24 @@ public class ActivityButtons extends Activity {
 		btn_backward.setOnTouchListener(new OnTouchListener() {
 			public boolean onTouch(View v, MotionEvent event) {
 		        if(event.getAction() == MotionEvent.ACTION_MOVE) {
-		        	motorLeft = 1700;
-		        	motorRight = 1300;
+					commandLeft[2] = (byte) cChannelMax; // commands for miniSSC
+					commandRight[2] = cChannelMin; // commands for miniSSC
 		        	if (bl.getState() == cBluetooth.STATE_CONNECTED) {
-		        		bl.sendData(String.valueOf(commandLeft+motorLeft));
-		        		bl.sendData(String.valueOf(commandRight+motorRight));
+						bl.sendDataByte(commandLeft);
+						bl.sendDataByte(commandRight);
 		        	}
 		        } else if (event.getAction() == MotionEvent.ACTION_UP) {
-		        	motorLeft = pwmBtnMotorLeft;
-		        	motorRight = pwmBtnMotorRight;
+					commandLeft[2] = cChannelNeutral; // commands for miniSSC
+					commandRight[2] = cChannelNeutral; // commands for miniSSC
 		        	if (bl.getState() == cBluetooth.STATE_CONNECTED) {
-		        		bl.sendData(String.valueOf(commandLeft+motorLeft));
-		        		bl.sendData(String.valueOf(commandRight+motorRight));
+						bl.sendDataByte(commandLeft);
+						bl.sendDataByte(commandRight);
 		        	}
 		        }
 				return false;
 		    }
 		});
-		
-		LightButton = (ToggleButton) findViewById(R.id.LightButton);   
-		LightButton.setOnClickListener(new OnClickListener() {
-			public void onClick(View v) {
-				if(LightButton.isChecked()){
-					if (bl.getState() == cBluetooth.STATE_CONNECTED) bl.sendData(String.valueOf(commandHorn+"1\r"));
-	    		}else{
-	    			if (bl.getState() == cBluetooth.STATE_CONNECTED) bl.sendData(String.valueOf(commandHorn+"0\r"));
-	    		}
-	    	}
-	    });
-		
+
 		mHandler.postDelayed(sRunnable, 600000);
 		
 	}
@@ -166,7 +156,8 @@ public class ActivityButtons extends Activity {
      
         @Override
         public void handleMessage(Message msg) {
-        	ActivityButtons activity = mActivity.get();
+			boolean suppressMessage = false;
+			ActivityButtons activity = mActivity.get();
         	if (activity != null) {
         		switch (msg.what) {
 	            case cBluetooth.BL_NOT_AVAILABLE:
@@ -185,10 +176,13 @@ public class ActivityButtons extends Activity {
 	            	activity.startActivityForResult(enableBtIntent, 1);
 	                break;
 	            case cBluetooth.BL_SOCKET_FAILED:
-	            	Toast.makeText(activity.getBaseContext(), "Socket failed", Toast.LENGTH_SHORT).show();
+					if (!suppressMessage) Toast.makeText(activity.getBaseContext(), "Socket failed", Toast.LENGTH_SHORT).show();
 	            	activity.finish();
 	                break;
-	          	}
+				case cBluetooth.USER_STOP_INITIATED:
+					suppressMessage = true;
+					break;
+				}
           	}
         }
 	}
@@ -202,11 +196,11 @@ public class ActivityButtons extends Activity {
     private void loadPref(){
     	SharedPreferences mySharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);  
     	address = mySharedPreferences.getString("pref_MAC_address", address);			// the first time we load the default values
-    	pwmBtnMotorLeft = Integer.parseInt(mySharedPreferences.getString("pref_pwmBtnMotorLeft", String.valueOf(pwmBtnMotorLeft)));
-    	pwmBtnMotorRight = Integer.parseInt(mySharedPreferences.getString("pref_pwmBtnMotorRight", String.valueOf(pwmBtnMotorRight)));
-    	commandLeft = mySharedPreferences.getString("pref_commandLeft", commandLeft);
-    	commandRight = mySharedPreferences.getString("pref_commandRight", commandRight);
-    	commandHorn = mySharedPreferences.getString("pref_commandHorn", commandHorn);
+//    	pwmBtnMotorLeft = Integer.parseInt(mySharedPreferences.getString("pref_pwmBtnMotorLeft", String.valueOf(pwmBtnMotorLeft)));
+//    	pwmBtnMotorRight = Integer.parseInt(mySharedPreferences.getString("pref_pwmBtnMotorRight", String.valueOf(pwmBtnMotorRight)));
+ //   	commandLeft = mySharedPreferences.getString("pref_commandLeft", commandLeft);
+		//   	commandRight = mySharedPreferences.getString("pref_commandRight", commandRight);
+//    	commandHorn = mySharedPreferences.getString("pref_commandHorn", commandHorn);
 	}
     
     @Override

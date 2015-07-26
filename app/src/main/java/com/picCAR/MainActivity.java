@@ -21,7 +21,7 @@ import android.widget.TextView;
 
 public class MainActivity extends Activity implements OnClickListener {
 
-	Button btnActAccelerometer, btnActWheel, btnActButtons, btnActMCU, btnActTouch, btnActAbout;
+	Button btnActAccelerometer, btnActWheel, btnActButtons, btnActTouch;
 
 	/** Called when the activity is first created. */
 	@Override
@@ -29,9 +29,6 @@ public class MainActivity extends Activity implements OnClickListener {
 	    super.onCreate(savedInstanceState);
 	    setContentView(R.layout.activity_main);
 	    
-	    TextView textv = (TextView) findViewById(R.id.textView1);
-	    textv.setShadowLayer(1, 3, 3, Color.GRAY);
-	
 	    btnActAccelerometer = (Button) findViewById(R.id.button_accel);
 	    btnActAccelerometer.setOnClickListener(this);
 	    
@@ -40,15 +37,10 @@ public class MainActivity extends Activity implements OnClickListener {
 	    
 	    btnActButtons = (Button) findViewById(R.id.button_buttons);
 	    btnActButtons.setOnClickListener(this);
-	    
-	    btnActMCU = (Button) findViewById(R.id.button_mcu);
-	    btnActMCU.setOnClickListener(this);
-	    
+
 	    btnActTouch = (Button) findViewById(R.id.button_touch);
 	    btnActTouch.setOnClickListener(this);
 	    
-	    btnActAbout = (Button) findViewById(R.id.button_about);
-	    btnActAbout.setOnClickListener(this);
 	}
 
 	public void onClick(View v) {
@@ -65,36 +57,38 @@ public class MainActivity extends Activity implements OnClickListener {
 	    	Intent intent_buttons = new Intent(this, ActivityButtons.class);
 	    	startActivity(intent_buttons);
 	    	break;  
-	    case R.id.button_mcu:
-	    	Intent intent_mcu = new Intent(this, ActivityMCU.class);
-	    	startActivity(intent_mcu);
-	    	break;
 	    case R.id.button_touch:
 	    	Intent intent_touch = new Intent(this, ActivityTouch.class);
 	    	startActivity(intent_touch);
 	    	break;
-	    case R.id.button_about:
-	    	Intent intent_about = new Intent(this, ActivityAbout.class);
-	    	startActivity(intent_about);
-	    	break; 	
 	    default:
 	    	break;
 	    }
 	}
   
 	@Override
-	public boolean onCreateOptionsMenu(Menu menu) {
+	public boolean onCreateOptionsMenu (Menu menu) {
 		getMenuInflater().inflate(R.menu.activity_main, menu);
 		return true;
 	}
 
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
-	  
 		Intent intent = new Intent();
-		intent.setClass(MainActivity.this, SetPreferenceActivity.class);
-		startActivityForResult(intent, 0); 
-	  
+		switch (item.getItemId()) {
+			case R.id.menu_app_settings:
+				intent.setClass(MainActivity.this, SetPreferenceActivity.class);
+				startActivityForResult(intent, 0);
+				return true;
+			case R.id.menu_ssc_settings:
+				Intent intent_mcu = new Intent(this, ActivityMCU.class);
+				startActivity(intent_mcu);
+				return true;
+			case R.id.menu_about:
+				Intent intent_about = new Intent(this, ActivityAbout.class);
+				startActivity(intent_about);
+				return true;
+		}
 		return true;
 	}
 }

@@ -43,21 +43,24 @@ public class ActivityWheel extends Activity implements SensorEventListener  {
     private int motorLeft = 0;
     private int motorRight = 0;
     private float xgl = 0;
-    private boolean isRear = false;	// reverse is off 
-    // private boolean BT_is_connect;	// bluetooh is connected 
-    private String address;			// MAC-address from settings 
-    private boolean show_Debug;		// show debug information (from settings) 
-    private int xMax;		    	// limit on the X axis from settings 
-    private int yMax;		    	// limit on the Y axis from settings 
-    private int yThreshold;  		// minimum value of PWM from settings 
-    private int pwmMax;	   			// maximum value of PWM from settings 
-    private int xR;					// pivot point from settings 
-    private String commandLeft;		// command symbol for left motor from settings 
-    private String commandRight;	// command symbol for right motor from settings 
-    private String commandHorn;		// command symbol for optional command from settings (for example - horn) 
-    private int pwmBtnMotorLeft;	// left PWM constant value from settings 
-    private int pwmBtnMotorRight;	// right PWM constant value from settings 
-    
+    private boolean isRear = false;															// reverse is off
+    private boolean show_Debug;																// show debug information (from settings)
+    private int xMax;		    															// limit on the X axis from settings
+    private int yMax;		    															// limit on the Y axis from settings
+    private int yThreshold;  																// minimum value of PWM from settings
+    private int pwmMax;	   																	// maximum value of PWM from settings
+    private int xR;																			// pivot point from settings
+	private final int cCommandHeader = 0xFF;
+	private final byte cChannelLeft = 0;
+	private final byte cChannelRight = 1;
+	private final int cChannelNeutral = 127;
+	private final int cChannelMax = 0xFE;
+	private final int cChannelMin = 0;
+	private String address;																	// MAC-address from settings
+	private byte[] commandLeft = {(byte) cCommandHeader,cChannelLeft,cChannelNeutral};		// command buffer for left motor
+	private byte[] commandRight = {(byte) cCommandHeader,cChannelRight,cChannelNeutral}; 	// command buffer for right motor
+	private final int pwnNeutral = 127;
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -69,12 +72,7 @@ public class ActivityWheel extends Activity implements SensorEventListener  {
         yMax = Integer.parseInt((String) getResources().getText(R.string.default_yMax));
         yThreshold = Integer.parseInt((String) getResources().getText(R.string.default_yThreshold));
         pwmMax = Integer.parseInt((String) getResources().getText(R.string.default_pwmMax));
-        commandLeft = (String) getResources().getText(R.string.default_commandLeft);
-        commandRight = (String) getResources().getText(R.string.default_commandRight);
-        commandHorn = (String) getResources().getText(R.string.default_commandHorn);
-		pwmBtnMotorLeft = Integer.parseInt((String) getResources().getText(R.string.default_pwmBtnMotorLeft));
-		pwmBtnMotorRight = Integer.parseInt((String) getResources().getText(R.string.default_pwmBtnMotorRight));
-        
+
 		loadPref();
         
         mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
@@ -86,19 +84,8 @@ public class ActivityWheel extends Activity implements SensorEventListener  {
         VSeekBar = (VerticalSeekBar) findViewById(R.id.calcVerticalSeekBar);  
         VSeekBar.setMaximum(pwmMax);
         
-        LightButton = (ToggleButton) findViewById(R.id.LightButton);
-        btn_Rear = (Button) findViewById(R.id.btnRear);
+		btn_Rear = (Button) findViewById(R.id.btnRear);
 
-        LightButton.setOnClickListener(new OnClickListener() {
-    		public void onClick(View v) {
-    			if(LightButton.isChecked()){
-    				if (bl.getState() == cBluetooth.STATE_CONNECTED) bl.sendData(String.valueOf(commandHorn+"1\r"));
-    			}else{
-    				if (bl.getState() == cBluetooth.STATE_CONNECTED) bl.sendData(String.valueOf(commandHorn+"0\r"));
-    			}
-    		}
-    	});
-        
         btn_Rear.setOnTouchListener(new OnTouchListener() {
 			public boolean onTouch(View v, MotionEvent event) {
 		        if(event.getAction() == MotionEvent.ACTION_MOVE) {
@@ -140,6 +127,7 @@ public class ActivityWheel extends Activity implements SensorEventListener  {
      
         @Override
         public void handleMessage(Message msg) {
+			boolean suppressMessage = false;
         	ActivityWheel activity = mActivity.get();
         	if (activity != null) {
         		switch (msg.what) {
@@ -159,9 +147,12 @@ public class ActivityWheel extends Activity implements SensorEventListener  {
 	            	activity.startActivityForResult(enableBtIntent, 1);
 	                break;
 	            case cBluetooth.BL_SOCKET_FAILED:
-	            	Toast.makeText(activity.getBaseContext(), "Socket failed", Toast.LENGTH_SHORT).show();
+	            	if (!suppressMessage) Toast.makeText(activity.getBaseContext(), "Socket failed", Toast.LENGTH_SHORT).show();
 	            	activity.finish();
 	                break;
+				case cBluetooth.USER_STOP_INITIATED:
+					suppressMessage = true;
+					break;
 	          	}
           	}
         }
@@ -189,13 +180,10 @@ public class ActivityWheel extends Activity implements SensorEventListener  {
 	}
         
 	private void MotionChanged(float x, int y) {
-    	String directionL = "";
-    	String directionR = "";
-    	String cmdSendL,cmdSendR;
-    	
+
     	Log.d(cBluetooth.TAG, Math.round(x)+"  "+y);
     	    	
-    	xAxis = Math.round(x*pwmMax/xR);
+    	xAxis = - Math.round(x*pwmMax/xR);
         //yAxis = -y;
     	if(isRear) yAxis = y;
     	else yAxis = -y;
@@ -230,29 +218,30 @@ public class ActivityWheel extends Activity implements SensorEventListener  {
         	motorLeft = yAxis;
         	motorRight = yAxis;
         }
-        
-        if(motorLeft > 0) {
-        	if (motorLeft > pwmMax) motorLeft = pwmMax;
-        	motorLeft = motorLeft + pwmBtnMotorLeft;	
-        } else {
-        	if (motorLeft < -pwmMax) motorLeft = -pwmMax;
-        	motorLeft = motorLeft + pwmBtnMotorLeft;	
-        }
-	
-         if(motorRight > 0) {
-            	if (motorRight > pwmMax) motorRight = pwmMax;
-            	motorRight = - motorRight + pwmBtnMotorRight;	
-         } else {
-            	if (motorRight < -pwmMax) motorRight = -pwmMax;
-            	motorRight = - motorRight + pwmBtnMotorRight;	
-         }
-        
-        cmdSendL = String.valueOf(commandLeft+motorLeft);
-        cmdSendR = String.valueOf(commandRight+motorRight);
-        if(bl.getState() == cBluetooth.STATE_CONNECTED) {
-        	bl.sendData(cmdSendL);
-        	bl.sendData(cmdSendR);
-        }
+
+		if(motorLeft > 0) {
+			if (motorLeft > pwmMax) motorLeft = pwmMax;
+			motorLeft = motorLeft + cChannelNeutral;
+		} else {
+			if (motorLeft < -pwmMax) motorLeft = -pwmMax;
+			motorLeft = motorLeft + cChannelNeutral;
+		}
+
+		if(motorRight > 0) {
+			if (motorRight > pwmMax) motorRight = pwmMax;
+			motorRight = - motorRight + cChannelNeutral;
+		} else {
+			if (motorRight < -pwmMax) motorRight = -pwmMax;
+			motorRight = - motorRight + cChannelNeutral;
+		}
+
+		commandLeft[2] = (byte) motorLeft; // commands for miniSSC
+		commandRight[2] = (byte) motorRight; // commands for miniSSC
+
+		if(bl.getState() == cBluetooth.STATE_CONNECTED) {
+			bl.sendDataByte(commandLeft);
+			bl.sendDataByte(commandRight);
+		}
 
         TextView textX = (TextView) findViewById(R.id.textViewX);
         TextView textY = (TextView) findViewById(R.id.textViewY);
@@ -263,9 +252,6 @@ public class ActivityWheel extends Activity implements SensorEventListener  {
         if(show_Debug){
         	textX.setText(String.valueOf("X:" + String.format("%.1f",x) + "; xPWM:"+xAxis));
 	        textY.setText(String.valueOf("Y:" + String.valueOf(y) + "; yPWM:"+yAxis));
-	        mLeft.setText(String.valueOf("MotorL:" + directionL + "." + motorLeft));
-	        mRight.setText(String.valueOf("MotorR:" + directionR + "." + motorRight));
-	        textCmdSend.setText(String.valueOf("Send:" + cmdSendL.toUpperCase(Locale.getDefault()) + cmdSendR.toUpperCase(Locale.getDefault())));
         }
         else{
         	textX.setText("");
@@ -278,42 +264,41 @@ public class ActivityWheel extends Activity implements SensorEventListener  {
     }
    
     private void loadPref(){
-    	SharedPreferences mySharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);  
-    	
-    	address = mySharedPreferences.getString("pref_MAC_address", address);			// the first time we load the default values
+    	SharedPreferences mySharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
+
+		address = mySharedPreferences.getString("pref_MAC_address", address);			// the first time we load the default values
     	xMax = Integer.parseInt(mySharedPreferences.getString("pref_xMax", String.valueOf(xMax)));
     	xR = Integer.parseInt(mySharedPreferences.getString("pref_xR", String.valueOf(xR)));
     	yMax = Integer.parseInt(mySharedPreferences.getString("pref_yMax", String.valueOf(yMax)));
     	yThreshold = Integer.parseInt(mySharedPreferences.getString("pref_yThreshold", String.valueOf(yThreshold)));
-    	pwmMax = Integer.parseInt(mySharedPreferences.getString("pref_pwmMax", String.valueOf(pwmMax)));
+    //	pwmMax = Integer.parseInt(mySharedPreferences.getString("pref_pwmMax", String.valueOf(pwmMax)));
     	show_Debug = mySharedPreferences.getBoolean("pref_Debug", false);
-    	commandLeft = mySharedPreferences.getString("pref_commandLeft", commandLeft);
-    	commandRight = mySharedPreferences.getString("pref_commandRight", commandRight);
-    	commandHorn = mySharedPreferences.getString("pref_commandHorn", commandHorn);
-		pwmBtnMotorLeft = Integer.parseInt((String) getResources().getText(R.string.default_pwmBtnMotorLeft));
-		pwmBtnMotorRight = Integer.parseInt((String) getResources().getText(R.string.default_pwmBtnMotorRight));
 	}
     
     @Override
     protected void onResume() {
     	super.onResume();
-    	bl.BT_Connect(address, false);
-    	// BT_is_connect = bl.BT_Connect(address, false);
+		commandLeft[2] = cChannelNeutral; // commands for miniSSC
+		commandRight[2] = cChannelNeutral; // commands for miniSSC
+		if (bl.getState() == cBluetooth.STATE_CONNECTED) {
+			bl.sendDataByte(commandLeft);
+			bl.sendDataByte(commandRight);
+		}
+		bl.BT_Connect(address, false);
     	mSensorManager.registerListener(this, mAccel, SensorManager.SENSOR_DELAY_NORMAL);
     }
 
     @Override
     protected void onPause() {
     	super.onPause();
-    	motorLeft = pwmBtnMotorLeft;
-    	motorRight = pwmBtnMotorRight;
-    	if (bl.getState() == cBluetooth.STATE_CONNECTED) {
-    		bl.sendData(String.valueOf(commandLeft+motorLeft));
-    		bl.sendData(String.valueOf(commandRight+motorRight));
-    	}
-    	
-    	bl.BT_onPause();
-    	    	mSensorManager.unregisterListener(this);
+		commandLeft[2] = cChannelNeutral; // commands for miniSSC
+		commandRight[2] = cChannelNeutral; // commands for miniSSC
+		if (bl.getState() == cBluetooth.STATE_CONNECTED) {
+			bl.sendDataByte(commandLeft);
+			bl.sendDataByte(commandRight);
+		}
+		bl.BT_onPause();
+		mSensorManager.unregisterListener(this);
     }
     
     @Override

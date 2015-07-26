@@ -26,26 +26,33 @@ import android.widget.ToggleButton;
 public class ActivityTouch extends Activity {
 	
     private cBluetooth bl = null;
-	
+
+	private final int cCommandHeader = 0xFF; // equals 0xFF
+	private final byte cChannelLeft = 0;
+	private final byte cChannelRight = 1;
+	private final int cChannelNeutral = 127;
+	private final int cChannelMax = 0xFE; // equals 0xFE
+	private final int cChannelMin = 0;
+	private String address;			// MAC-address from settings
+	private byte[] commandLeft = {(byte) cCommandHeader,cChannelLeft,cChannelNeutral};	// command buffer for left motor
+	private byte[] commandRight = {(byte) cCommandHeader,cChannelRight,cChannelNeutral}; // command buffer for right motor
+
+	private final int pwnNeutral = 127;
+
+
 	private final static int BIG_CIRCLE_SIZE = 120;
 	private final static int FINGER_CIRCLE_SIZE = 20;
 	
     private int motorLeft = 0;
     private int motorRight = 0;
-    
-    private String address;				// MAC-address from settings 
+	private int prev_xAxis = 255; // make sure that initial setting is executed
+	private int prev_yAxis = 0;
+
     private boolean show_Debug;			// show debug information (from settings)
     // private boolean BT_is_connect;		// bluetooh is connected  
     private int xRperc;					// pivot point from settings 
-    private int pwmMax;	   				// maximum value of PWM from settings 
-    private String commandLeft;			// command symbol for left motor from settings 
-    private String commandRight;		// command symbol for right motor from settings 
-    private String commandHorn;			// command symbol for optional command from settings (for example - horn) 
-    private String cmdSendL,cmdSendR;
-    private int pwmBtnMotorLeft;	// left PWM constant value from settings 
-    private int pwmBtnMotorRight;	// right PWM constant value from settings 
-    
-    
+    private final int pwmMax = 126;	   	// maximum value of PWM from settings
+
 	@Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -54,20 +61,14 @@ public class ActivityTouch extends Activity {
         setContentView(v1);
         
         address = (String) getResources().getText(R.string.default_MAC);
-        xRperc = Integer.parseInt((String) getResources().getText(R.string.default_xRperc));
-        pwmMax = Integer.parseInt((String) getResources().getText(R.string.default_pwmMax));
-        commandLeft = (String) getResources().getText(R.string.default_commandLeft);
-        commandRight = (String) getResources().getText(R.string.default_commandRight);
-        commandHorn = (String) getResources().getText(R.string.default_commandHorn);
-		pwmBtnMotorLeft = Integer.parseInt((String) getResources().getText(R.string.default_pwmBtnMotorLeft));
-		pwmBtnMotorRight = Integer.parseInt((String) getResources().getText(R.string.default_pwmBtnMotorRight));
-        
+        xRperc = Integer.parseInt(getResources().getString(R.string.default_xRperc));
+
         loadPref();
         
         bl = new cBluetooth(this, mHandler);
         bl.checkBTState();
         
-        final ToggleButton myLightButton = new ToggleButton(this);
+/*        final ToggleButton myLightButton = new ToggleButton(this);
         addContentView(myLightButton, new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT));
         myLightButton.setOnClickListener(new OnClickListener() {
     		public void onClick(View v) {
@@ -78,10 +79,10 @@ public class ActivityTouch extends Activity {
     			}
     		}
     	});
-        
+    */
         mHandler.postDelayed(sRunnable, 600000);
 	}
-	
+
 	private static class MyHandler extends Handler {
         private final WeakReference<ActivityTouch> mActivity;
      
@@ -91,6 +92,7 @@ public class ActivityTouch extends Activity {
      
         @Override
         public void handleMessage(Message msg) {
+			boolean suppressMessage = false;
         	ActivityTouch activity = mActivity.get();
         	if (activity != null) {
         		switch (msg.what) {
@@ -110,9 +112,12 @@ public class ActivityTouch extends Activity {
 	            	activity.startActivityForResult(enableBtIntent, 1);
 	                break;
 	            case cBluetooth.BL_SOCKET_FAILED:
-	            	Toast.makeText(activity.getBaseContext(), "Socket failed", Toast.LENGTH_SHORT).show();
+					if (!suppressMessage) Toast.makeText(activity.getBaseContext(), "Socket failed", Toast.LENGTH_SHORT).show();
 	            	activity.finish();
 	                break;
+				case cBluetooth.USER_STOP_INITIATED:
+					suppressMessage = true;
+					break;
 	          	}
           	}
         }
@@ -138,8 +143,8 @@ public class ActivityTouch extends Activity {
         float xcirc;
         float ycirc;
         
-    	String directionL = "";
-    	String directionR = "";
+    	// String directionL = "";
+    	// String directionR = "";
     	//String cmdSend;
     	//String temptxtMotor;
     	
@@ -183,7 +188,7 @@ public class ActivityTouch extends Activity {
             if(show_Debug){
 	            canvas.drawText(String.valueOf("X:"+xcirc), 10, 75, textPaint);
 	            canvas.drawText(String.valueOf("Y:"+(-ycirc)), 10, 95, textPaint);
-	            canvas.drawText(String.valueOf("Motor:"+cmdSendL+cmdSendR), 10, 115, textPaint);
+	            canvas.drawText(String.valueOf("Motor:"+String.valueOf(motorLeft)+" "+String.valueOf(motorRight)), 10, 115, textPaint);
             }
         }
 
@@ -207,7 +212,6 @@ public class ActivityTouch extends Activity {
         			x = evX;
         			y = evY;
         			fingerPaint.setColor(Color.GREEN);
-        			//temptxtMotor = CalcMotor(xcirc,ycirc);
         			CalcMotor(xcirc,ycirc);
         			invalidate();
         			drag = true;
@@ -242,63 +246,57 @@ public class ActivityTouch extends Activity {
 	}
 	
 	private void CalcMotor(float calc_x, float calc_y){
-    	
-    	calc_x = -calc_x;
-		
+
 		int xAxis = Math.round(calc_x*pwmMax/BIG_CIRCLE_SIZE);
 		int yAxis = Math.round(calc_y*pwmMax/BIG_CIRCLE_SIZE);
-		
+
 		Log.d("4WD", String.valueOf("xAxis:"+xAxis+"  yAxis"+yAxis));
-		
-		int xR = Math.round(BIG_CIRCLE_SIZE*xRperc/100);		// calculate the value of pivot point 
-		
-        if(xAxis > 0) {
-        	motorRight = yAxis;
-        	if(Math.abs(Math.round(calc_x)) > xR){
-        		motorLeft = Math.round((calc_x-xR)*pwmMax/(BIG_CIRCLE_SIZE-xR));
-        		motorLeft = Math.round(-motorLeft * yAxis/pwmMax);
-        	}
-        	else motorLeft = yAxis - yAxis*xAxis/pwmMax;
-        }
-        else if(xAxis < 0) {
-        	motorLeft = yAxis;
-        	if(Math.abs(Math.round(calc_x)) > xR){
-        		motorRight = Math.round((Math.abs(calc_x)-xR)*pwmMax/(BIG_CIRCLE_SIZE-xR));
-        		motorRight = Math.round(-motorRight * yAxis/pwmMax);
-        	}
-        	else motorRight = yAxis - yAxis*Math.abs(xAxis)/pwmMax;
-        }
-        else if(xAxis == 0) {
-        	motorLeft = yAxis;
-        	motorRight = yAxis;
-        }
-        
-        
-        if(motorLeft > 0) {
-        	if (motorLeft > pwmMax) motorLeft = pwmMax;
-        	motorLeft = motorLeft + pwmBtnMotorLeft;	
-        } else {
-        	if (motorLeft < -pwmMax) motorLeft = -pwmMax;
-        	motorLeft = motorLeft + pwmBtnMotorLeft;	
-        }
-	
-         if(motorRight > 0) {
-            	if (motorRight > pwmMax) motorRight = pwmMax;
-            	motorRight = - motorRight + pwmBtnMotorRight;	
-         } else {
-            	if (motorRight < -pwmMax) motorRight = -pwmMax;
-            	motorRight = - motorRight + pwmBtnMotorRight;	
-         }
-        
-        cmdSendL = String.valueOf(commandLeft+motorLeft);
-        cmdSendR = String.valueOf(commandRight+motorRight);
-        if(bl.getState() == cBluetooth.STATE_CONNECTED) {
-        	bl.sendData(cmdSendL);
-        	bl.sendData(cmdSendR);
-        }
+
+		int xR = Math.round(BIG_CIRCLE_SIZE*xRperc/100);		// calculate the value of pivot point
+
+		if(xAxis > 0) {
+			motorRight = yAxis;
+			if(Math.abs(Math.round(calc_x)) > xR){
+				motorLeft = Math.round((calc_x-xR)*pwmMax/(BIG_CIRCLE_SIZE-xR));
+				motorLeft = Math.round(-motorLeft * yAxis/pwmMax);
+			} else motorLeft = yAxis - yAxis*xAxis/pwmMax;
+		}
+		else if(xAxis < 0) {
+			motorLeft = yAxis;
+			if(Math.abs(Math.round(calc_x)) > xR){
+				motorRight = Math.round((Math.abs(calc_x)-xR)*pwmMax/(BIG_CIRCLE_SIZE-xR));
+				motorRight = Math.round(-motorRight * yAxis/pwmMax);
+			} else motorRight = yAxis - yAxis*Math.abs(xAxis)/pwmMax;
+		} else if(xAxis == 0) {
+			motorLeft = yAxis;
+			motorRight = yAxis;
+		}
+
+		if(motorLeft > 0) {
+			if (motorLeft > pwmMax) motorLeft = pwmMax;
+				motorLeft = motorLeft + cChannelNeutral;
+			} else {
+				if (motorLeft < -pwmMax) motorLeft = -pwmMax;
+				motorLeft = motorLeft + cChannelNeutral;
+			}
+
+			if(motorRight > 0) {
+				if (motorRight > pwmMax) motorRight = pwmMax;
+				motorRight = - motorRight + cChannelNeutral;
+			} else {
+				if (motorRight < -pwmMax) motorRight = -pwmMax;
+				motorRight = - motorRight + cChannelNeutral;
+			}
+
+		commandLeft[2] = (byte) motorLeft; // commands for miniSSC
+		commandRight[2] = (byte) motorRight; // commands for miniSSC
+
+		if(bl.getState() == cBluetooth.STATE_CONNECTED) {
+			bl.sendDataByte(commandLeft);
+			bl.sendDataByte(commandRight);
+		}
 	}
-	
-   
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
     	loadPref();
@@ -307,11 +305,11 @@ public class ActivityTouch extends Activity {
 	@Override
     protected void onResume() {
     	super.onResume();
-    	motorLeft = pwmBtnMotorLeft;
-    	motorRight = pwmBtnMotorRight;
-    	if (bl.getState() == cBluetooth.STATE_CONNECTED) {
-    		bl.sendData(String.valueOf(commandLeft+motorLeft));
-    		bl.sendData(String.valueOf(commandRight+motorRight));
+		commandLeft[2] = cChannelNeutral; // commands for miniSSC
+		commandRight[2] = cChannelNeutral; // commands for miniSSC
+  	if (bl.getState() == cBluetooth.STATE_CONNECTED) {
+			bl.sendDataByte(commandLeft);
+			bl.sendDataByte(commandRight);
     	}
     	bl.BT_Connect(address, false);
     	// BT_is_connect = bl.BT_Connect(address, false);
@@ -320,11 +318,11 @@ public class ActivityTouch extends Activity {
     @Override
     protected void onPause() {
     	super.onPause();
-      	motorLeft = pwmBtnMotorLeft;
-    	motorRight = pwmBtnMotorRight;
-    	if (bl.getState() == cBluetooth.STATE_CONNECTED) {
-    		bl.sendData(String.valueOf(commandLeft+motorLeft));
-    		bl.sendData(String.valueOf(commandRight+motorRight));
+		commandLeft[2] = cChannelNeutral; // commands for miniSSC
+		commandRight[2] = cChannelNeutral; // commands for miniSSC
+		if (bl.getState() == cBluetooth.STATE_CONNECTED) {
+			bl.sendDataByte(commandLeft);
+			bl.sendDataByte(commandRight);
     	}
     	bl.BT_onPause();
     }
@@ -333,13 +331,13 @@ public class ActivityTouch extends Activity {
     	SharedPreferences mySharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);  
     	address = mySharedPreferences.getString("pref_MAC_address", address);			// the first time we load the default values
     	xRperc = Integer.parseInt(mySharedPreferences.getString("pref_xRperc", String.valueOf(xRperc)));
-    	pwmMax = Integer.parseInt(mySharedPreferences.getString("pref_pwmMax", String.valueOf(pwmMax)));
+//    	pwmMax = Integer.parseInt(mySharedPreferences.getString("pref_pwmMax", String.valueOf(pwmMax)));
     	show_Debug = mySharedPreferences.getBoolean("pref_Debug", false);
-    	commandLeft = mySharedPreferences.getString("pref_commandLeft", commandLeft);
-    	commandRight = mySharedPreferences.getString("pref_commandRight", commandRight);
-    	commandHorn = mySharedPreferences.getString("pref_commandHorn", commandHorn);
-		pwmBtnMotorLeft = Integer.parseInt((String) getResources().getText(R.string.default_pwmBtnMotorLeft));
-		pwmBtnMotorRight = Integer.parseInt((String) getResources().getText(R.string.default_pwmBtnMotorRight));
+//    	commandLeft = mySharedPreferences.getString("pref_commandLeft", commandLeft);
+//    	commandRight = mySharedPreferences.getString("pref_commandRight", commandRight);
+//    	commandHorn = mySharedPreferences.getString("pref_commandHorn", commandHorn);
+//		pwmBtnMotorLeft = Integer.parseInt((String) getResources().getText(R.string.default_pwmBtnMotorLeft));
+//		pwmBtnMotorRight = Integer.parseInt((String) getResources().getText(R.string.default_pwmBtnMotorRight));
 
     }
 }
