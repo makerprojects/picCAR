@@ -1,10 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.picCAR"
     android:versionCode="1"
-    android:versionName="1.0" >
+    android:versionName="1.2" >
 
     <uses-sdk
-        android:minSdkVersion="14"
+        android:minSdkVersion="17"
         android:targetSdkVersion="17" />
     
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
@@ -21,7 +21,6 @@
             android:screenOrientation="landscape" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
@@ -41,7 +40,8 @@
         </activity>
         <activity 
             android:name="ActivityButtons"
-            android:label="@string/title_activity_buttons" >
+            android:label="@string/title_activity_buttons"
+            android:screenOrientation="landscape" >
         </activity>
         <activity 
             android:name="ActivityMCU"
@@ -49,7 +49,8 @@
         </activity>
         <activity 
             android:name="ActivityTouch"
-            android:label="@string/title_activity_touch" >
+            android:label="@string/title_activity_touch"
+            android:screenOrientation="landscape" >
         </activity>
         <activity 
             android:name="ActivityAbout"

@@ -6,7 +6,7 @@
 
 
     <ImageView
-        android:id="@+id/cxem_logo"
+        android:id="@+id/pikoder_logo"
         android:contentDescription="@+id/app_name"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -15,13 +15,6 @@
         android:alpha="0.35"
         android:paddingBottom="5dp"
         android:paddingRight="5dp"
-        android:src="@drawable/cxemnet_logo" />
-
-    <ToggleButton
-        android:id="@+id/LightButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_above="@+id/cxem_logo"
-        android:layout_centerHorizontal="true" />
+        android:src="@drawable/pikoder_logo" />
 
 </RelativeLayout>

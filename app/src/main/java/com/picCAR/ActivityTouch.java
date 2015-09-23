@@ -143,11 +143,6 @@ public class ActivityTouch extends Activity {
         float xcirc;
         float ycirc;
         
-    	// String directionL = "";
-    	// String directionR = "";
-    	//String cmdSend;
-    	//String temptxtMotor;
-    	
         // variables for drag
         boolean drag = false;
         float dragX = 0;

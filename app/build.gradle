@@ -5,12 +5,17 @@ android {
     buildToolsVersion "22.0.1"
 
     defaultConfig {
-        applicationId "com.cxem_car"
+        applicationId "com.picCAR.app"
         minSdkVersion 14
         targetSdkVersion 17
     }
 
     buildTypes {
+        applicationVariants.all { variant ->
+            variant.outputs.each { output ->
+                output.outputFile = file("$project.buildDir/apk/picCAR.apk")
+            }
+        }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.txt'

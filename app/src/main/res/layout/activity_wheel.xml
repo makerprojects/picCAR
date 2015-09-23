@@ -45,7 +45,7 @@
         android:text="" />
 
     <ImageView
-        android:id="@+id/cxem_logo"
+        android:id="@+id/pikoder_logo"
         android:contentDescription="@+id/app_name"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
