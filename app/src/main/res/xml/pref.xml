@@ -21,7 +21,20 @@
 			android:defaultValue="false" />
 		
 	</PreferenceCategory>
-	
+
+	<PreferenceCategory
+		android:key="pref_Model"
+		android:title="Model specific settings"
+		android:summary="Model specific settings">
+
+		<CheckBoxPreference
+			android:key="pref_Mixing_active"
+			android:title="Mixing Active"
+			android:summary="Mixing activated"
+			android:defaultValue="true" />
+
+	</PreferenceCategory>
+
 	<PreferenceCategory
  		android:key="pref_Accel"
  		android:title="Accelerometer control settings"

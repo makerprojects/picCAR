@@ -13,11 +13,9 @@ import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.View.OnClickListener;
 import android.view.View.OnTouchListener;
 import android.widget.Button;
 import android.widget.Toast;
-import android.widget.ToggleButton;
 
 public class ActivityButtons extends Activity {
 	
@@ -35,7 +33,15 @@ public class ActivityButtons extends Activity {
 	private String address;			// MAC-address from settings
     private byte[] commandLeft = {(byte)cCommandHeader, cChannelLeft, (byte) cChannelNeutral};	// command buffer for left motor
     private byte[] commandRight = {(byte) cCommandHeader,cChannelRight, (byte) cChannelNeutral}; // command buffer for right motor
-//    private String commandHorn;		// command symbol for optional command (for example - horn) from settings
+	private boolean mixing = true; // for backward compatibility
+	private boolean forward_down_sent = false;
+	private boolean forward_up_sent = false;
+	private boolean backward_down_sent = false;
+	private boolean backward_up_sent = false;
+	private boolean right_down_sent = false;
+	private boolean right_up_sent = false;
+	private boolean left_down_sent = false;
+	private boolean left_up_sent = false;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -43,6 +49,7 @@ public class ActivityButtons extends Activity {
 		setContentView(R.layout.activity_buttons);
 		
 		address = (String) getResources().getText(R.string.default_MAC);
+
 //		pwmBtnMotorLeft = Integer.parseInt((String) getResources().getText(R.string.default_pwmBtnMotorLeft));
 //		pwmBtnMotorRight = Integer.parseInt((String) getResources().getText(R.string.default_pwmBtnMotorRight));
 //        commandLeft = (String) getResources().getText(R.string.default_commandLeft);
@@ -61,90 +68,121 @@ public class ActivityButtons extends Activity {
 		       
 		btn_forward.setOnTouchListener(new OnTouchListener() {
 			public boolean onTouch(View v, MotionEvent event) {
-		        if(event.getAction() == MotionEvent.ACTION_MOVE) {
-					commandLeft[2] = cChannelMin; // commands for miniSSC
-					commandRight[2] = (byte) cChannelMax; // commands for miniSSC
-		        	if (bl.getState() == cBluetooth.STATE_CONNECTED) {
-						bl.sendDataByte(commandLeft);
-						bl.sendDataByte(commandRight);
-		        	}
-		        } else if (event.getAction() == MotionEvent.ACTION_UP) {
-					commandLeft[2] = cChannelNeutral; // commands for miniSSC
+				if (event.getAction() == MotionEvent.ACTION_DOWN) {
+					commandRight[2] = (byte) cChannelMax; // miniSSC positions
+					if (mixing) commandLeft[2] = cChannelMin; // commands for miniSSC
+					if (!forward_down_sent) {
+						if (bl.getState() == cBluetooth.STATE_CONNECTED) {
+							bl.sendDataByte(commandLeft);
+							bl.sendDataByte(commandRight);
+						}
+						forward_down_sent = true;
+						forward_up_sent = false;
+					}
+				} else if (event.getAction() == MotionEvent.ACTION_UP) {
+					if (mixing) commandLeft[2] = cChannelNeutral; // if not mixing then maintain steering value
 					commandRight[2] = cChannelNeutral; // commands for miniSSC
-		        	if (bl.getState() == cBluetooth.STATE_CONNECTED) {
-						bl.sendDataByte(commandLeft);
-						bl.sendDataByte(commandRight);
-		        	}
-		        }
+					if (!forward_up_sent) {
+						if (bl.getState() == cBluetooth.STATE_CONNECTED) {
+							bl.sendDataByte(commandLeft);
+							bl.sendDataByte(commandRight);
+						}
+						forward_up_sent = true;
+						forward_down_sent = false;
+					}
+				}
 				return false;
 		    }
 		});
-		
-		btn_left.setOnTouchListener(new OnTouchListener() {
-			public boolean onTouch(View v, MotionEvent event) {
-		        if(event.getAction() == MotionEvent.ACTION_MOVE) {
-					commandLeft[2] = cChannelMin; // commands for miniSSC
-					commandRight[2] = cChannelMin; // commands for miniSSC
-		        	if (bl.getState() == cBluetooth.STATE_CONNECTED) {
-						bl.sendDataByte(commandLeft);
-						bl.sendDataByte(commandRight);
-		        	}
-		        } else if (event.getAction() == MotionEvent.ACTION_UP) {
-					commandLeft[2] = cChannelNeutral; // commands for miniSSC
-					commandRight[2] = cChannelNeutral; // commands for miniSSC
-		        	if (bl.getState() == cBluetooth.STATE_CONNECTED) {
-						bl.sendDataByte(commandLeft);
-						bl.sendDataByte(commandRight);
-		        	}
-		        }
-				return false;
-		    }
-		});
-		
-		btn_right.setOnTouchListener(new OnTouchListener() {
-			public boolean onTouch(View v, MotionEvent event) {
-		        if(event.getAction() == MotionEvent.ACTION_MOVE) {
-					commandLeft[2] = (byte) cChannelMax; // commands for miniSSC
-					commandRight[2] = (byte) cChannelMax; // commands for miniSSC
-		        	if (bl.getState() == cBluetooth.STATE_CONNECTED) {
-						bl.sendDataByte(commandLeft);
-						bl.sendDataByte(commandRight);
-		        	}
-		        } else if (event.getAction() == MotionEvent.ACTION_UP) {
-					commandLeft[2] = cChannelNeutral; // commands for miniSSC
-					commandRight[2] = cChannelNeutral; // commands for miniSSC
-		        	if (bl.getState() == cBluetooth.STATE_CONNECTED) {
-						bl.sendDataByte(commandLeft);
-						bl.sendDataByte(commandRight);
-		        	}
-		        }
-				return false;
-		    }
-		});
-		
+
 		btn_backward.setOnTouchListener(new OnTouchListener() {
 			public boolean onTouch(View v, MotionEvent event) {
-		        if(event.getAction() == MotionEvent.ACTION_MOVE) {
-					commandLeft[2] = (byte) cChannelMax; // commands for miniSSC
-					commandRight[2] = cChannelMin; // commands for miniSSC
-		        	if (bl.getState() == cBluetooth.STATE_CONNECTED) {
-						bl.sendDataByte(commandLeft);
-						bl.sendDataByte(commandRight);
-		        	}
+				if (event.getAction() == MotionEvent.ACTION_DOWN) {
+					commandRight[2] = cChannelMin;	// command SSC format
+					if (mixing) commandLeft[2] = (byte) cChannelMax;
+					if (!backward_down_sent) {
+						if (bl.getState() == cBluetooth.STATE_CONNECTED) {
+							bl.sendDataByte(commandLeft);
+							bl.sendDataByte(commandRight);
+						}
+						backward_down_sent = true;
+						backward_up_sent = false;
+					}
+				} else if (event.getAction() == MotionEvent.ACTION_UP) {
+					if (mixing) commandLeft[2] = cChannelNeutral; // commands for miniSSC
+					commandRight[2] = cChannelNeutral; // commands for miniSSC
+					if (!backward_up_sent) {
+						if (bl.getState() == cBluetooth.STATE_CONNECTED) {
+							bl.sendDataByte(commandLeft);
+							bl.sendDataByte(commandRight);
+						}
+						backward_up_sent = true;
+						backward_down_sent = false;
+					}
+				}
+				return false;
+			}
+		});
+
+		btn_right.setOnTouchListener(new OnTouchListener() {
+			public boolean onTouch(View v, MotionEvent event) {
+				if(event.getAction() == MotionEvent.ACTION_DOWN) {
+					commandLeft[2] = (byte) cChannelMax;
+					if (mixing) commandRight[2] = (byte) cChannelMax; // commands for miniSSC
+					if (!right_down_sent) {
+						if (bl.getState() == cBluetooth.STATE_CONNECTED) {
+							bl.sendDataByte(commandLeft);
+							bl.sendDataByte(commandRight);
+						}
+						right_down_sent = true;
+						right_up_sent = false;
+					}
+				} else if (event.getAction() == MotionEvent.ACTION_UP) {
+					commandLeft[2] = cChannelNeutral; // commands for miniSSC
+					if (mixing) commandRight[2] = cChannelNeutral;
+					if (!right_up_sent) {
+						if (bl.getState() == cBluetooth.STATE_CONNECTED) {
+							bl.sendDataByte(commandLeft);
+							bl.sendDataByte(commandRight);
+						}
+						right_up_sent = true;
+						right_down_sent = false;
+					}
+				}
+				return false;
+			}
+		});
+
+		btn_left.setOnTouchListener(new OnTouchListener() {
+			public boolean onTouch(View v, MotionEvent event) {
+		        if(event.getAction() == MotionEvent.ACTION_DOWN) {
+					commandLeft[2] = cChannelMin;
+					if (mixing) commandRight[2] = cChannelMin; // commands for miniSSC
+					if (!left_down_sent) {
+						if (bl.getState() == cBluetooth.STATE_CONNECTED) {
+							bl.sendDataByte(commandLeft);
+							bl.sendDataByte(commandRight);
+						}
+						left_down_sent = true;
+						left_up_sent = false;
+					}
 		        } else if (event.getAction() == MotionEvent.ACTION_UP) {
 					commandLeft[2] = cChannelNeutral; // commands for miniSSC
-					commandRight[2] = cChannelNeutral; // commands for miniSSC
-		        	if (bl.getState() == cBluetooth.STATE_CONNECTED) {
-						bl.sendDataByte(commandLeft);
-						bl.sendDataByte(commandRight);
-		        	}
+					if (mixing) commandRight[2] = cChannelNeutral; // maintain motion if not mixing
+					if (!left_up_sent) {
+						if (bl.getState() == cBluetooth.STATE_CONNECTED) {
+							bl.sendDataByte(commandLeft);
+							bl.sendDataByte(commandRight);
+						}
+						left_up_sent = true;
+						left_down_sent = false;
+					}
 		        }
 				return false;
 		    }
 		});
 
 		mHandler.postDelayed(sRunnable, 600000);
-		
 	}
 		
     private static class MyHandler extends Handler {
@@ -196,10 +234,12 @@ public class ActivityButtons extends Activity {
     private void loadPref(){
     	SharedPreferences mySharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);  
     	address = mySharedPreferences.getString("pref_MAC_address", address);			// the first time we load the default values
+		mixing = mySharedPreferences.getBoolean("pref_Mixing_active", true);
+
 //    	pwmBtnMotorLeft = Integer.parseInt(mySharedPreferences.getString("pref_pwmBtnMotorLeft", String.valueOf(pwmBtnMotorLeft)));
 //    	pwmBtnMotorRight = Integer.parseInt(mySharedPreferences.getString("pref_pwmBtnMotorRight", String.valueOf(pwmBtnMotorRight)));
- //   	commandLeft = mySharedPreferences.getString("pref_commandLeft", commandLeft);
-		//   	commandRight = mySharedPreferences.getString("pref_commandRight", commandRight);
+//   	commandLeft = mySharedPreferences.getString("pref_commandLeft", commandLeft);
+//   	commandRight = mySharedPreferences.getString("pref_commandRight", commandRight);
 //    	commandHorn = mySharedPreferences.getString("pref_commandHorn", commandHorn);
 	}
     

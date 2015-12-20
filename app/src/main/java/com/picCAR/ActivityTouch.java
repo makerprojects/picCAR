@@ -30,6 +30,7 @@ public class ActivityTouch extends Activity {
 	private final int cCommandHeader = 0xFF; // equals 0xFF
 	private final byte cChannelLeft = 0;
 	private final byte cChannelRight = 1;
+	private boolean mixing = true; // for backward compatibility
 	private final int cChannelNeutral = 127;
 	private final int cChannelMax = 0xFE; // equals 0xFE
 	private final int cChannelMin = 0;
@@ -249,39 +250,43 @@ public class ActivityTouch extends Activity {
 
 		int xR = Math.round(BIG_CIRCLE_SIZE*xRperc/100);		// calculate the value of pivot point
 
-		if(xAxis > 0) {
-			motorRight = yAxis;
-			if(Math.abs(Math.round(calc_x)) > xR){
-				motorLeft = Math.round((calc_x-xR)*pwmMax/(BIG_CIRCLE_SIZE-xR));
-				motorLeft = Math.round(-motorLeft * yAxis/pwmMax);
-			} else motorLeft = yAxis - yAxis*xAxis/pwmMax;
-		}
-		else if(xAxis < 0) {
-			motorLeft = yAxis;
-			if(Math.abs(Math.round(calc_x)) > xR){
-				motorRight = Math.round((Math.abs(calc_x)-xR)*pwmMax/(BIG_CIRCLE_SIZE-xR));
-				motorRight = Math.round(-motorRight * yAxis/pwmMax);
-			} else motorRight = yAxis - yAxis*Math.abs(xAxis)/pwmMax;
-		} else if(xAxis == 0) {
-			motorLeft = yAxis;
-			motorRight = yAxis;
-		}
+		if (mixing) {
+			if (xAxis > 0) {
+				motorRight = yAxis;
+				if (Math.abs(Math.round(calc_x)) > xR) {
+					motorLeft = Math.round((calc_x - xR) * pwmMax / (BIG_CIRCLE_SIZE - xR));
+					motorLeft = Math.round(-motorLeft * yAxis / pwmMax);
+				} else motorLeft = yAxis - yAxis * xAxis / pwmMax;
+			} else if (xAxis < 0) {
+				motorLeft = yAxis;
+				if (Math.abs(Math.round(calc_x)) > xR) {
+					motorRight = Math.round((Math.abs(calc_x) - xR) * pwmMax / (BIG_CIRCLE_SIZE - xR));
+					motorRight = Math.round(-motorRight * yAxis / pwmMax);
+				} else motorRight = yAxis - yAxis * Math.abs(xAxis) / pwmMax;
+			} else if (xAxis == 0) {
+				motorLeft = yAxis;
+				motorRight = yAxis;
+			}
 
-		if(motorLeft > 0) {
-			if (motorLeft > pwmMax) motorLeft = pwmMax;
+			if (motorLeft > 0) {
+				if (motorLeft > pwmMax) motorLeft = pwmMax;
 				motorLeft = motorLeft + cChannelNeutral;
 			} else {
 				if (motorLeft < -pwmMax) motorLeft = -pwmMax;
 				motorLeft = motorLeft + cChannelNeutral;
 			}
 
-			if(motorRight > 0) {
+			if (motorRight > 0) {
 				if (motorRight > pwmMax) motorRight = pwmMax;
-				motorRight = - motorRight + cChannelNeutral;
+				motorRight = -motorRight + cChannelNeutral;
 			} else {
 				if (motorRight < -pwmMax) motorRight = -pwmMax;
-				motorRight = - motorRight + cChannelNeutral;
+				motorRight = -motorRight + cChannelNeutral;
 			}
+		} else {
+			motorLeft = cChannelNeutral + xAxis;
+			motorRight = cChannelNeutral - yAxis;
+		}
 
 		commandLeft[2] = (byte) motorLeft; // commands for miniSSC
 		commandRight[2] = (byte) motorRight; // commands for miniSSC
@@ -328,6 +333,7 @@ public class ActivityTouch extends Activity {
     	xRperc = Integer.parseInt(mySharedPreferences.getString("pref_xRperc", String.valueOf(xRperc)));
 //    	pwmMax = Integer.parseInt(mySharedPreferences.getString("pref_pwmMax", String.valueOf(pwmMax)));
     	show_Debug = mySharedPreferences.getBoolean("pref_Debug", false);
+		mixing = mySharedPreferences.getBoolean("pref_Mixing_active", true);
 //    	commandLeft = mySharedPreferences.getString("pref_commandLeft", commandLeft);
 //    	commandRight = mySharedPreferences.getString("pref_commandRight", commandRight);
 //    	commandHorn = mySharedPreferences.getString("pref_commandHorn", commandHorn);

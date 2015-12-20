@@ -2,7 +2,7 @@
 <resources>
     
     <string name="app_name">picCAR</string>
-    <string name="app_name_version">picCAR 1.2</string>
+    <string name="app_name_version">picCAR 1.3</string>
     <string name="menu_app_settings">APP Settings</string>
     <string name="menu_ssc_settings">SSC Settings</string>
     <string name="menu_about">About picCAR</string>
@@ -29,7 +29,7 @@
     <string name="right">right</string>
     
 	<string name="mcu_textInfo1">Settings for the PiKoder&#47;SSC. The parameters are transferred and stored in the PiKoder&#47;SSC\'s EEPROM memory.</string>
-	<string name="text_about">You can download the latest version of the application and the source code on <a href="http://www.pikoder.com">www.pikoder.com</a></string>
+	<string name="text_about">Please go to <a href="http://www.pikoder.com">www.pikoder.com</a> for more information.</string>
 	<string name="mcu_textStop">Stop when the connection is lost:</string>
 	<string name="mcu_cBox_AutoOFF">On</string>
 	<string name="mcu_after_sec">After (second):</string>

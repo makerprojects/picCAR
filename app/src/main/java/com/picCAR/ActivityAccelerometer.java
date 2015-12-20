@@ -37,7 +37,8 @@ public class ActivityAccelerometer extends Activity implements SensorEventListen
     private int motorLeft = 0;
     private int motorRight = 0;
     private boolean show_Debug;		// show debug information (from settings)
-    // private boolean BT_is_connect;	// bluetooth is connected 
+    private boolean mixing = true; // for backward compatibility
+    // private boolean BT_is_connect;	// bluetooth is connected
     private int xMax;		    	// limit on the X axis from settings  (0-10)
     private int yMax;		    	// limit on the Y axis from settings (0-10)
     private int yThreshold;  		// minimum value of PWM from settings 
@@ -143,73 +144,71 @@ public class ActivityAccelerometer extends Activity implements SensorEventListen
           
       
     public void onSensorChanged(SensorEvent e) {
-    	String directionL = "";
-    	String directionR = "";
-    	String cmdSendL,cmdSendR;
-        float xRaw, yRaw;		// RAW-value from Accelerometer sensor 
-    	
-        WindowManager windowMgr = (WindowManager)this.getSystemService(WINDOW_SERVICE);
+        String directionL = "";
+        String directionR = "";
+        String cmdSendL, cmdSendR;
+        float xRaw, yRaw;        // RAW-value from Accelerometer sensor
+
+        WindowManager windowMgr = (WindowManager) this.getSystemService(WINDOW_SERVICE);
         int rotationIndex = windowMgr.getDefaultDisplay().getRotation();
-        if (rotationIndex == 1 || rotationIndex == 3){			// detect 90 or 270 degree rotation 
-        	xRaw = -e.values[1];
-        	yRaw = e.values[0];
+        if (rotationIndex == 1 || rotationIndex == 3) {            // detect 90 or 270 degree rotation
+            xRaw = -e.values[1];
+            yRaw = e.values[0];
+        } else {
+            xRaw = e.values[0];
+            yRaw = e.values[1];
         }
-        else{
-        	xRaw = e.values[0];
-        	yRaw = e.values[1];      	
-        }
-    	    	
+
         // y-Axis = speed
         // x-Axis = direction
-        
-    	xAxis = - Math.round(xRaw*pwmMax/xR);				// scale gyro input
-        yAxis = Math.round(yRaw*pwmMax/yMax);
-        
-        if(xAxis > pwmMax) xAxis = pwmMax;
-        else if(xAxis < -pwmMax) xAxis = -pwmMax;		// negative - tilt right 
-        
-        if(yAxis > pwmMax) yAxis = pwmMax;
-        else if(yAxis < -pwmMax) yAxis = -pwmMax;		// negative - tilt forward 
-        else if(yAxis >= 0 && yAxis < yThreshold) yAxis = 0;
-        else if(yAxis < 0 && yAxis > -yThreshold) yAxis = 0;
-        
-        if(xAxis > 0) {		// if tilt to left, slow down the left engine 
-        	motorRight = yAxis;
-        	if(Math.abs(Math.round(xRaw)) > xR){
-        		motorLeft = Math.round((xRaw-xR)*pwmMax/(xMax-xR));
-        		motorLeft = Math.round(-motorLeft * yAxis/pwmMax);
-        		//if(motorLeft < -pwmMax) motorLeft = -pwmMax;
-        	}
-        	else motorLeft = yAxis - yAxis*xAxis/pwmMax;
-        }
-        else if(xAxis < 0) {		// tilt to right
-        	motorLeft = yAxis;
-        	if(Math.abs(Math.round(xRaw)) > xR){
-        		motorRight = Math.round((Math.abs(xRaw)-xR)*pwmMax/(xMax-xR));
-        		motorRight = Math.round(-motorRight * yAxis/pwmMax);
-        		//if(motorRight > -pwmMax) motorRight = -pwmMax;
-        	}
-        	else motorRight = yAxis - yAxis*Math.abs(xAxis)/pwmMax;
-        }
-        else if(xAxis == 0) {
-        	motorLeft = yAxis;
-        	motorRight = yAxis;
-        }
 
-        if(motorLeft > 0) {
-            if (motorLeft > pwmMax) motorLeft = pwmMax;
-            motorLeft = motorLeft + cChannelNeutral;
-        } else {
-            if (motorLeft < -pwmMax) motorLeft = -pwmMax;
-            motorLeft = motorLeft + cChannelNeutral;
-        }
+        xAxis = -Math.round(xRaw * pwmMax / xR);                // scale gyro input
+        yAxis = Math.round(yRaw * pwmMax / yMax);
 
-        if(motorRight > 0) {
-            if (motorRight > pwmMax) motorRight = pwmMax;
-            motorRight = - motorRight + cChannelNeutral;
+        if (xAxis > pwmMax) xAxis = pwmMax;
+        else if (xAxis < -pwmMax) xAxis = -pwmMax;        // negative - tilt right
+
+        if (yAxis > pwmMax) yAxis = pwmMax;
+        else if (yAxis < -pwmMax) yAxis = -pwmMax;        // negative - tilt forward
+        else if (yAxis >= 0 && yAxis < yThreshold) yAxis = 0;
+        else if (yAxis < 0 && yAxis > -yThreshold) yAxis = 0;
+
+        if (mixing) {
+            if (xAxis > 0) {        // if tilt to left, slow down the left engine
+                motorRight = yAxis;
+                if (Math.abs(Math.round(xRaw)) > xR) {
+                    motorLeft = Math.round((xRaw - xR) * pwmMax / (xMax - xR));
+                    motorLeft = Math.round(-motorLeft * yAxis / pwmMax);
+                    //if(motorLeft < -pwmMax) motorLeft = -pwmMax;
+                } else motorLeft = yAxis - yAxis * xAxis / pwmMax;
+            } else if (xAxis < 0) {        // tilt to right
+                motorLeft = yAxis;
+                if (Math.abs(Math.round(xRaw)) > xR) {
+                    motorRight = Math.round((Math.abs(xRaw) - xR) * pwmMax / (xMax - xR));
+                    motorRight = Math.round(-motorRight * yAxis / pwmMax);
+                    //if(motorRight > -pwmMax) motorRight = -pwmMax;
+                } else motorRight = yAxis - yAxis * Math.abs(xAxis) / pwmMax;
+            } else if (xAxis == 0) {
+                motorLeft = yAxis;
+                motorRight = yAxis;
+            }
+            if (motorLeft > 0) {
+                if (motorLeft > pwmMax) motorLeft = pwmMax;
+                motorLeft = motorLeft + cChannelNeutral;
+            } else {
+                if (motorLeft < -pwmMax) motorLeft = -pwmMax;
+                motorLeft = motorLeft + cChannelNeutral;
+            }
+            if (motorRight > 0) {
+                if (motorRight > pwmMax) motorRight = pwmMax;
+                motorRight = -motorRight + cChannelNeutral;
+            } else {
+                if (motorRight < -pwmMax) motorRight = -pwmMax;
+                motorRight = -motorRight + cChannelNeutral;
+            }
         } else {
-            if (motorRight < -pwmMax) motorRight = -pwmMax;
-            motorRight = - motorRight + cChannelNeutral;
+            motorLeft = cChannelNeutral + xAxis;
+            motorRight = cChannelNeutral + yAxis;
         }
 
         commandLeft[2] = (byte) motorLeft; // commands for miniSSC
@@ -285,6 +284,7 @@ public class ActivityAccelerometer extends Activity implements SensorEventListen
     	yThreshold = Integer.parseInt(mySharedPreferences.getString("pref_yThreshold", String.valueOf(yThreshold)));
     	pwmMax = Integer.parseInt(mySharedPreferences.getString("pref_pwmMax", String.valueOf(pwmMax)));
     	show_Debug = mySharedPreferences.getBoolean("pref_Debug", false);
+        mixing = mySharedPreferences.getBoolean("pref_Mixing_active", true);
     }
     
     @Override

@@ -45,6 +45,7 @@ public class ActivityWheel extends Activity implements SensorEventListener  {
     private float xgl = 0;
     private boolean isRear = false;															// reverse is off
     private boolean show_Debug;																// show debug information (from settings)
+	private boolean mixing = true; // for backward compatibility
     private int xMax;		    															// limit on the X axis from settings
     private int yMax;		    															// limit on the Y axis from settings
     private int yThreshold;  																// minimum value of PWM from settings
@@ -195,46 +196,46 @@ public class ActivityWheel extends Activity implements SensorEventListener  {
         else if(yAxis < -pwmMax) yAxis = -pwmMax;		// negative - tilt forward 
         else if(yAxis >= 0 && yAxis < yThreshold) yAxis = 0;
         else if(yAxis < 0 && yAxis > -yThreshold) yAxis = 0;
-        
-        if(xAxis > 0) {		// if tilt to left, slow down the left engine 
-        	motorRight = yAxis;
-        	if(Math.abs(Math.round(x)) > xR){
-        		motorLeft = Math.round((x-xR)*pwmMax/(xMax-xR));
-        		motorLeft = Math.round(-motorLeft * yAxis/pwmMax);
-        		//if(motorLeft < -pwmMax) motorLeft = -pwmMax;
-        	}
-        	else motorLeft = yAxis - yAxis*xAxis/pwmMax;
-        }
-        else if(xAxis < 0) {		// tilt to right 
-        	motorLeft = yAxis;
-        	if(Math.abs(Math.round(x)) > xR){
-        		motorRight = Math.round((Math.abs(x)-xR)*pwmMax/(xMax-xR));
-        		motorRight = Math.round(-motorRight * yAxis/pwmMax);
-        		//if(motorRight > -pwmMax) motorRight = -pwmMax;
-        	}
-        	else motorRight = yAxis - yAxis*Math.abs(xAxis)/pwmMax;
-        }
-        else if(xAxis == 0) {
-        	motorLeft = yAxis;
-        	motorRight = yAxis;
-        }
 
-		if(motorLeft > 0) {
-			if (motorLeft > pwmMax) motorLeft = pwmMax;
-			motorLeft = motorLeft + cChannelNeutral;
+		if (mixing) {
+			if (xAxis > 0) {        // if tilt to left, slow down the left engine
+				motorRight = yAxis;
+				if (Math.abs(Math.round(x)) > xR) {
+					motorLeft = Math.round((x - xR) * pwmMax / (xMax - xR));
+					motorLeft = Math.round(-motorLeft * yAxis / pwmMax);
+					//if(motorLeft < -pwmMax) motorLeft = -pwmMax;
+				} else motorLeft = yAxis - yAxis * xAxis / pwmMax;
+			} else if (xAxis < 0) {        // tilt to right
+				motorLeft = yAxis;
+				if (Math.abs(Math.round(x)) > xR) {
+					motorRight = Math.round((Math.abs(x) - xR) * pwmMax / (xMax - xR));
+					motorRight = Math.round(-motorRight * yAxis / pwmMax);
+					//if(motorRight > -pwmMax) motorRight = -pwmMax;
+				} else motorRight = yAxis - yAxis * Math.abs(xAxis) / pwmMax;
+			} else if (xAxis == 0) {
+				motorLeft = yAxis;
+				motorRight = yAxis;
+			}
+
+			if (motorLeft > 0) {
+				if (motorLeft > pwmMax) motorLeft = pwmMax;
+				motorLeft = motorLeft + cChannelNeutral;
+			} else {
+				if (motorLeft < -pwmMax) motorLeft = -pwmMax;
+				motorLeft = motorLeft + cChannelNeutral;
+			}
+
+			if (motorRight > 0) {
+				if (motorRight > pwmMax) motorRight = pwmMax;
+				motorRight = -motorRight + cChannelNeutral;
+			} else {
+				if (motorRight < -pwmMax) motorRight = -pwmMax;
+				motorRight = -motorRight + cChannelNeutral;
+			}
 		} else {
-			if (motorLeft < -pwmMax) motorLeft = -pwmMax;
-			motorLeft = motorLeft + cChannelNeutral;
+			motorLeft = cChannelNeutral + xAxis;
+			motorRight = cChannelNeutral - yAxis;
 		}
-
-		if(motorRight > 0) {
-			if (motorRight > pwmMax) motorRight = pwmMax;
-			motorRight = - motorRight + cChannelNeutral;
-		} else {
-			if (motorRight < -pwmMax) motorRight = -pwmMax;
-			motorRight = - motorRight + cChannelNeutral;
-		}
-
 		commandLeft[2] = (byte) motorLeft; // commands for miniSSC
 		commandRight[2] = (byte) motorRight; // commands for miniSSC
 
@@ -273,6 +274,7 @@ public class ActivityWheel extends Activity implements SensorEventListener  {
     	yThreshold = Integer.parseInt(mySharedPreferences.getString("pref_yThreshold", String.valueOf(yThreshold)));
     //	pwmMax = Integer.parseInt(mySharedPreferences.getString("pref_pwmMax", String.valueOf(pwmMax)));
     	show_Debug = mySharedPreferences.getBoolean("pref_Debug", false);
+		mixing = mySharedPreferences.getBoolean("pref_Mixing_active", true);
 	}
     
     @Override
