@@ -2,6 +2,8 @@ package com.picCAR;
 
 import java.lang.ref.WeakReference;
 import java.util.Locale;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
@@ -57,6 +59,12 @@ public class ActivityAccelerometer extends Activity implements SensorEventListen
 
     private final int pwnNeutral = 127;
 
+    private static String TAG = ActivityAccelerometer.class.getSimpleName();
+
+    // fail safe related definitions
+    Timer timer = null;
+    TimerTask timerTask = null;
+    int iTimeOut = 0;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -73,27 +81,14 @@ public class ActivityAccelerometer extends Activity implements SensorEventListen
         loadPref();
                 
         mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-        mAccel = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER); 
-               
-        bl = new cBluetooth(this, mHandler);
-        bl.checkBTState();
-        
-/*        LightButton = (ToggleButton) findViewById(R.id.LightButton);
-	
-        LightButton.setOnClickListener(new OnClickListener() {
-    		public void onClick(View v) {
-    			if(LightButton.isChecked()){
-    				if(bl.getState() == cBluetooth.STATE_CONNECTED) bl.sendData(String.valueOf(commandHorn+"1\r"));
-    			}else{
-    				if(bl.getState() == cBluetooth.STATE_CONNECTED) bl.sendData(String.valueOf(commandHorn+"0\r"));
-    			}
-    		}
-    	});
-        
-  */
+        mAccel = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
 
-        mHandler.postDelayed(sRunnable, 600000);
-        //finish();
+        Globals g = Globals.getInstance();	// load timeout form global variable
+        iTimeOut = g.getData();
+        Log.d(TAG, "Read timeout " + String.valueOf(iTimeOut));
+
+        bl = new cBluetooth(mHandler);
+
     }
     
     private static class MyHandler extends Handler {
@@ -135,7 +130,29 @@ public class ActivityAccelerometer extends Activity implements SensorEventListen
           }
         }
       }
-     
+
+    // get the heartbeat going
+    public void startTimer() {
+        Log.v(TAG, "starting Timer");
+        timer = new Timer();
+        timerTask = new TimerTask() {
+            @Override
+            public void run() {
+                bl.sendDataByte(commandLeft);
+                bl.sendDataByte(commandRight);
+            }
+        };
+        timer.schedule(timerTask, 0, iTimeOut/2); 	// play it safe...
+    }
+
+    public void stopTimer() {
+        //stop the timer, if it's not already null
+        if (timer != null) {
+            timer.cancel();
+            timer = null;
+        }
+    }
+
     private final MyHandler mHandler = new MyHandler(this);
 
     private final static Runnable sRunnable = new Runnable() {
@@ -219,38 +236,6 @@ public class ActivityAccelerometer extends Activity implements SensorEventListen
             bl.sendDataByte(commandRight);
         }
 
-    /*
-        // if(motorLeft > 0) {			// tilt to backward
-        //	 	directionL = "-";
-        //	}      
-        //	if(motorRight > 0) {		// tilt to backward 
-        //		directionR = "-";
-        // }
-        // motorLeft = Math.abs(motorLeft);
-        // motorRight = Math.abs(motorRight);
-        
-        motorLeft = 1500 + motorLeft;
-        motorRight = 1500 - motorRight;
-        if(motorLeft > 1700) motorLeft = 1700;
-        if(motorLeft < 1300) motorLeft = 1300;
-        if(motorRight > 1700) motorRight = 1700;
-        if(motorRight < 1300) motorRight = 1300;
-               
-        // if(motorLeft > pwmMax) motorLeft = pwmMax;
-        // if(motorRight > pwmMax) motorRight = pwmMax;
-                
-        // cmdSendL = String.valueOf(commandLeft+directionL+motorLeft+"\r");
-        // cmdSendR = String.valueOf(commandRight+directionR+motorRight+"\r");
-
-        cmdSendL = String.valueOf(commandLeft+motorLeft);
-        cmdSendR = String.valueOf(commandRight+motorRight);
-        
-        // if(BT_is_connect()) bl.sendData(cmdSendL+cmdSendR);
-        if(bl.getState() == cBluetooth.STATE_CONNECTED) bl.sendData(cmdSendL);
-        if(bl.getState() == cBluetooth.STATE_CONNECTED) bl.sendData(cmdSendR);
-
-     */
-
         TextView textX = (TextView) findViewById(R.id.textViewX);
         TextView textY = (TextView) findViewById(R.id.textViewY);
         TextView mLeft = (TextView) findViewById(R.id.mLeft);
@@ -298,6 +283,10 @@ public class ActivityAccelerometer extends Activity implements SensorEventListen
         }
         bl.BT_Connect(address, false);
     	mSensorManager.registerListener(this, mAccel, SensorManager.SENSOR_DELAY_NORMAL);
+        // start timer onResume if set
+        if (iTimeOut > 0) {
+            startTimer();
+        }
     }
 
     @Override
@@ -311,6 +300,7 @@ public class ActivityAccelerometer extends Activity implements SensorEventListen
         }
     	bl.BT_onPause();
     	mSensorManager.unregisterListener(this);
+        stopTimer();
     }
     
     @Override

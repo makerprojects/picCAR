@@ -1,8 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.picCAR"
-    android:versionCode="1"
-    android:versionName="1.2" >
-
+    android:versionCode="5"
+    android:versionName="1.4" >
     <uses-sdk
         android:minSdkVersion="17"
         android:targetSdkVersion="17" />

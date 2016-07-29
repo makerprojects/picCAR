@@ -1,6 +1,8 @@
 package com.picCAR;
 
 import java.lang.ref.WeakReference;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
@@ -50,15 +52,20 @@ public class ActivityTouch extends Activity {
 	private int prev_yAxis = 0;
 
     private boolean show_Debug;			// show debug information (from settings)
-    // private boolean BT_is_connect;		// bluetooh is connected  
-    private int xRperc;					// pivot point from settings 
+    private int xRperc;					// pivot point from settings
     private final int pwmMax = 126;	   	// maximum value of PWM from settings
+
+	private static String TAG = ActivityButtons.class.getSimpleName();
+
+	// fail safe related definitions
+	Timer timer = null;
+	TimerTask timerTask = null;
+	int iTimeOut = 0;
 
 	@Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         MyView v1 = new MyView(this);
-        //setContentView(new MyView(this));
         setContentView(v1);
         
         address = (String) getResources().getText(R.string.default_MAC);
@@ -66,22 +73,11 @@ public class ActivityTouch extends Activity {
 
         loadPref();
         
-        bl = new cBluetooth(this, mHandler);
-        bl.checkBTState();
-        
-/*        final ToggleButton myLightButton = new ToggleButton(this);
-        addContentView(myLightButton, new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT));
-        myLightButton.setOnClickListener(new OnClickListener() {
-    		public void onClick(View v) {
-    			if(myLightButton.isChecked()){
-    				if(bl.getState() == cBluetooth.STATE_CONNECTED) bl.sendData(String.valueOf(commandHorn+"1\r"));
-    			}else{
-    				if(bl.getState() == cBluetooth.STATE_CONNECTED) bl.sendData(String.valueOf(commandHorn+"0\r"));
-    			}
-    		}
-    	});
-    */
-        mHandler.postDelayed(sRunnable, 600000);
+        bl = new cBluetooth(mHandler);
+
+		Globals g = Globals.getInstance();	// load timeout form global variable
+		iTimeOut = g.getData();
+		Log.d(TAG, "Read timeout " + String.valueOf(iTimeOut));
 	}
 
 	private static class MyHandler extends Handler {
@@ -123,7 +119,29 @@ public class ActivityTouch extends Activity {
           	}
         }
 	}
-     
+
+	// get the heartbeat going
+	public void startTimer() {
+		Log.v(TAG, "starting Timer");
+		timer = new Timer();
+		timerTask = new TimerTask() {
+			@Override
+			public void run() {
+				bl.sendDataByte(commandLeft);
+				bl.sendDataByte(commandRight);
+			}
+		};
+		timer.schedule(timerTask, 0, iTimeOut/2); 	// play it safe...
+	}
+
+	public void stopTimer() {
+		//stop the timer, if it's not already null
+		if (timer != null) {
+			timer.cancel();
+			timer = null;
+		}
+	}
+
 	private final MyHandler mHandler = new MyHandler(this);
 	
 	private final static Runnable sRunnable = new Runnable() {
@@ -307,12 +325,15 @@ public class ActivityTouch extends Activity {
     	super.onResume();
 		commandLeft[2] = cChannelNeutral; // commands for miniSSC
 		commandRight[2] = cChannelNeutral; // commands for miniSSC
-  	if (bl.getState() == cBluetooth.STATE_CONNECTED) {
+	  	if (bl.getState() == cBluetooth.STATE_CONNECTED) {
 			bl.sendDataByte(commandLeft);
 			bl.sendDataByte(commandRight);
     	}
     	bl.BT_Connect(address, false);
-    	// BT_is_connect = bl.BT_Connect(address, false);
+		// start timer onResume if set
+		if (iTimeOut > 0) {
+			startTimer();
+		}
     }
 
     @Override
@@ -325,20 +346,14 @@ public class ActivityTouch extends Activity {
 			bl.sendDataByte(commandRight);
     	}
     	bl.BT_onPause();
+		stopTimer();
     }
     
     private void loadPref(){
     	SharedPreferences mySharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);  
     	address = mySharedPreferences.getString("pref_MAC_address", address);			// the first time we load the default values
     	xRperc = Integer.parseInt(mySharedPreferences.getString("pref_xRperc", String.valueOf(xRperc)));
-//    	pwmMax = Integer.parseInt(mySharedPreferences.getString("pref_pwmMax", String.valueOf(pwmMax)));
     	show_Debug = mySharedPreferences.getBoolean("pref_Debug", false);
 		mixing = mySharedPreferences.getBoolean("pref_Mixing_active", true);
-//    	commandLeft = mySharedPreferences.getString("pref_commandLeft", commandLeft);
-//    	commandRight = mySharedPreferences.getString("pref_commandRight", commandRight);
-//    	commandHorn = mySharedPreferences.getString("pref_commandHorn", commandHorn);
-//		pwmBtnMotorLeft = Integer.parseInt((String) getResources().getText(R.string.default_pwmBtnMotorLeft));
-//		pwmBtnMotorRight = Integer.parseInt((String) getResources().getText(R.string.default_pwmBtnMotorRight));
-
     }
 }

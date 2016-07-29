@@ -28,8 +28,12 @@ public class MainActivity extends Activity implements OnClickListener {
 	public void onCreate(Bundle savedInstanceState) {
 	    super.onCreate(savedInstanceState);
 	    setContentView(R.layout.activity_main);
-	    
-	    btnActAccelerometer = (Button) findViewById(R.id.button_accel);
+
+		// init timeout...
+		Globals g = Globals.getInstance();
+		g.setData(0);
+
+		btnActAccelerometer = (Button) findViewById(R.id.button_accel);
 	    btnActAccelerometer.setOnClickListener(this);
 	    
 	    btnActWheel = (Button) findViewById(R.id.button_wheel);

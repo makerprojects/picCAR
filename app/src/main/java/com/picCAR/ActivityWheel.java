@@ -2,6 +2,8 @@ package com.picCAR;
 
 import java.lang.ref.WeakReference;
 import java.util.Locale;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
@@ -62,6 +64,13 @@ public class ActivityWheel extends Activity implements SensorEventListener  {
 	private byte[] commandRight = {(byte) cCommandHeader,cChannelRight,cChannelNeutral}; 	// command buffer for right motor
 	private final int pwnNeutral = 127;
 
+	private static String TAG = ActivityWheel.class.getSimpleName();
+
+	// fail safe related definitions
+	Timer timer = null;
+	TimerTask timerTask = null;
+	int iTimeOut = 0;
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -77,11 +86,14 @@ public class ActivityWheel extends Activity implements SensorEventListener  {
 		loadPref();
         
         mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-        mAccel = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);          
-        
-        bl = new cBluetooth(this, mHandler);
-        bl.checkBTState();
-        
+        mAccel = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+
+		Globals g = Globals.getInstance();	// load timeout form global variable
+		iTimeOut = g.getData();
+		Log.d(TAG, "Read timeout " + String.valueOf(iTimeOut));
+
+		bl = new cBluetooth(mHandler);
+
         VSeekBar = (VerticalSeekBar) findViewById(R.id.calcVerticalSeekBar);  
         VSeekBar.setMaximum(pwmMax);
         
@@ -114,9 +126,7 @@ public class ActivityWheel extends Activity implements SensorEventListener  {
 				VSeekBar.setProgressAndThumb(0);
 			}
     	}); 
-        
-        mHandler.postDelayed(sRunnable, 600000);
-        //finish();
+
     }
     
     private static class MyHandler extends Handler {
@@ -158,7 +168,29 @@ public class ActivityWheel extends Activity implements SensorEventListener  {
           	}
         }
 	}
-     
+
+	// get the heartbeat going
+	public void startTimer() {
+		Log.v(TAG, "starting Timer");
+		timer = new Timer();
+		timerTask = new TimerTask() {
+			@Override
+			public void run() {
+				bl.sendDataByte(commandLeft);
+				bl.sendDataByte(commandRight);
+			}
+		};
+		timer.schedule(timerTask, 0, iTimeOut/2); 	// play it safe...
+	}
+
+	public void stopTimer() {
+		//stop the timer, if it's not already null
+		if (timer != null) {
+			timer.cancel();
+			timer = null;
+		}
+	}
+
 	private final MyHandler mHandler = new MyHandler(this);
      
 	private final static Runnable sRunnable = new Runnable() {
@@ -288,6 +320,10 @@ public class ActivityWheel extends Activity implements SensorEventListener  {
 		}
 		bl.BT_Connect(address, false);
     	mSensorManager.registerListener(this, mAccel, SensorManager.SENSOR_DELAY_NORMAL);
+		// start timer onResume if set
+		if (iTimeOut > 0) {
+			startTimer();
+		}
     }
 
     @Override
@@ -301,6 +337,7 @@ public class ActivityWheel extends Activity implements SensorEventListener  {
 		}
 		bl.BT_onPause();
 		mSensorManager.unregisterListener(this);
+		stopTimer();
     }
     
     @Override

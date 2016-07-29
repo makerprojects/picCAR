@@ -48,8 +48,8 @@ public class ActivityMCU  extends Activity{
     	error_get_data = (String) getResources().getText(R.string.error_get_data);
 		loadPref();
 		
-	    bl = new cBluetooth(this, mHandler);
-	    bl.checkBTState();
+	    bl = new cBluetooth(mHandler);
+	    // bl.checkBTState();
 	    
 	    cb_AutoOFF.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
@@ -58,7 +58,7 @@ public class ActivityMCU  extends Activity{
             	else if (!isChecked) {
             		edit_AutoOFF.setEnabled(false) ;
 					str_to_send += "000";
-				    Log.d(cBluetooth.TAG, "Send Flash Op:" + str_to_send);
+				    Log.i(cBluetooth.TAG, "Send Flash Op:" + str_to_send);
 				    bl.sendData(str_to_send);
             		edit_AutoOFF.setText("0.0");
             	}
@@ -89,8 +89,8 @@ public class ActivityMCU  extends Activity{
 					DecimalFormat myFormatter = new DecimalFormat("00.0");
 					String output = myFormatter.format(num1);
 					str_to_send += String.valueOf(output.charAt(0)) + String.valueOf(output.charAt(1)) + String.valueOf(output.charAt(3));
-//				    str_to_send += "\t";
-				    		
+					Globals g = Globals.getInstance();	// store timeout in global variable
+					g.setData(((output.charAt(0) - '0') *100 + (output.charAt(1) - '0') * 10 + (output.charAt(3) - '0'))*100); // convert to millis
 				    Log.d(cBluetooth.TAG, "Send Flash Op:" + str_to_send);
 				    bl.sendData(str_to_send);
 					//Toast.makeText(getBaseContext(), str_to_send, Toast.LENGTH_SHORT).show();
@@ -102,7 +102,7 @@ public class ActivityMCU  extends Activity{
 			}
 	    });
         
-        mHandler.postDelayed(sRunnable, 600000);
+//        mHandler.postDelayed(sRunnable, 600000);
         
     }
     
@@ -141,11 +141,9 @@ public class ActivityMCU  extends Activity{
 	            	byte[] readBuf = (byte[]) msg.obj;
 	            	String strIncom = new String(readBuf, 0, msg.arg1);
 	            	sb.append(strIncom);								// append string 
-	            	
+					Log.i(cBluetooth.TAG, "Received: " + strIncom);
 	            	int myNum = 9999;
-
-	            	strIncom = strIncom.replace("\r","").replace("\n","");	            		
-	            	
+	            	strIncom = strIncom.replace("\r","").replace("\n","");
 	            	if (strIncom.length() >= 3) {
 	            		try {
 	            			myNum = Integer.parseInt(strIncom);
