@@ -59,10 +59,11 @@ public class ActivityWheel extends Activity implements SensorEventListener  {
 	private final int cChannelNeutral = 127;
 	private final int cChannelMax = 0xFE;
 	private final int cChannelMin = 0;
-	private String address;																	// MAC-address from settings
+	private String BT_DeviceName;			// Bluetooth device name from settings
 	private byte[] commandLeft = {(byte) cCommandHeader,cChannelLeft,cChannelNeutral};		// command buffer for left motor
 	private byte[] commandRight = {(byte) cCommandHeader,cChannelRight,cChannelNeutral}; 	// command buffer for right motor
 	private final int pwnNeutral = 127;
+	private static boolean suppressMessage = false;
 
 	private static String TAG = ActivityWheel.class.getSimpleName();
 
@@ -75,8 +76,8 @@ public class ActivityWheel extends Activity implements SensorEventListener  {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_wheel);
-                
-        address = (String) getResources().getText(R.string.default_MAC);
+
+		BT_DeviceName = (String) getResources().getText(R.string.default_BtDevice);
         xMax = Integer.parseInt((String) getResources().getText(R.string.default_xMax));
         xR = Integer.parseInt((String) getResources().getText(R.string.default_xR));
         yMax = Integer.parseInt((String) getResources().getText(R.string.default_yMax));
@@ -138,7 +139,6 @@ public class ActivityWheel extends Activity implements SensorEventListener  {
      
         @Override
         public void handleMessage(Message msg) {
-			boolean suppressMessage = false;
         	ActivityWheel activity = mActivity.get();
         	if (activity != null) {
         		switch (msg.what) {
@@ -163,6 +163,10 @@ public class ActivityWheel extends Activity implements SensorEventListener  {
 	                break;
 				case cBluetooth.USER_STOP_INITIATED:
 					suppressMessage = true;
+					break;
+				case cBluetooth.BL_DEVICE_NOT_FOUND:
+					if (!suppressMessage) Toast.makeText(activity.getBaseContext(), "Device not found", Toast.LENGTH_SHORT).show();
+					activity.finish();
 					break;
 	          	}
           	}
@@ -298,8 +302,7 @@ public class ActivityWheel extends Activity implements SensorEventListener  {
    
     private void loadPref(){
     	SharedPreferences mySharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
-
-		address = mySharedPreferences.getString("pref_MAC_address", address);			// the first time we load the default values
+		BT_DeviceName = mySharedPreferences.getString("pref_BT_Device", BT_DeviceName);			// the first time we load the default values
     	xMax = Integer.parseInt(mySharedPreferences.getString("pref_xMax", String.valueOf(xMax)));
     	xR = Integer.parseInt(mySharedPreferences.getString("pref_xR", String.valueOf(xR)));
     	yMax = Integer.parseInt(mySharedPreferences.getString("pref_yMax", String.valueOf(yMax)));
@@ -318,7 +321,8 @@ public class ActivityWheel extends Activity implements SensorEventListener  {
 			bl.sendDataByte(commandLeft);
 			bl.sendDataByte(commandRight);
 		}
-		bl.BT_Connect(address, false);
+		bl.BT_Connect(BT_DeviceName, false);
+		suppressMessage = false;
     	mSensorManager.registerListener(this, mAccel, SensorManager.SENSOR_DELAY_NORMAL);
 		// start timer onResume if set
 		if (iTimeOut > 0) {
@@ -337,6 +341,7 @@ public class ActivityWheel extends Activity implements SensorEventListener  {
 		}
 		bl.BT_onPause();
 		mSensorManager.unregisterListener(this);
+		suppressMessage = true;
 		stopTimer();
     }
     

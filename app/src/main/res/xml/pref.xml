@@ -9,10 +9,10 @@
  		android:summary="General settings">
 	
 		<EditTextPreference
-			 android:key="pref_MAC_address"
-			 android:title="MAC address"
-			 android:summary="MAC-address of Bluetooth module"
-			 android:defaultValue="@+string/default_MAC" />
+			 android:key="pref_BT_Device"
+			 android:title="BT Device Name"
+			 android:summary="Bluetooth device name"
+			 android:defaultValue="@+string/default_BtDevice" />
 
 		<CheckBoxPreference
 			android:key="pref_Debug"

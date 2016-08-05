@@ -36,7 +36,7 @@ public class ActivityTouch extends Activity {
 	private final int cChannelNeutral = 127;
 	private final int cChannelMax = 0xFE; // equals 0xFE
 	private final int cChannelMin = 0;
-	private String address;			// MAC-address from settings
+	private String BT_DeviceName;			// Bluetooth device name from settings
 	private byte[] commandLeft = {(byte) cCommandHeader,cChannelLeft,cChannelNeutral};	// command buffer for left motor
 	private byte[] commandRight = {(byte) cCommandHeader,cChannelRight,cChannelNeutral}; // command buffer for right motor
 
@@ -55,6 +55,8 @@ public class ActivityTouch extends Activity {
     private int xRperc;					// pivot point from settings
     private final int pwmMax = 126;	   	// maximum value of PWM from settings
 
+	private static boolean suppressMessage = false;
+
 	private static String TAG = ActivityButtons.class.getSimpleName();
 
 	// fail safe related definitions
@@ -67,8 +69,8 @@ public class ActivityTouch extends Activity {
         super.onCreate(savedInstanceState);
         MyView v1 = new MyView(this);
         setContentView(v1);
-        
-        address = (String) getResources().getText(R.string.default_MAC);
+
+		BT_DeviceName = (String) getResources().getText(R.string.default_BtDevice);
         xRperc = Integer.parseInt(getResources().getString(R.string.default_xRperc));
 
         loadPref();
@@ -89,7 +91,6 @@ public class ActivityTouch extends Activity {
      
         @Override
         public void handleMessage(Message msg) {
-			boolean suppressMessage = false;
         	ActivityTouch activity = mActivity.get();
         	if (activity != null) {
         		switch (msg.what) {
@@ -115,7 +116,11 @@ public class ActivityTouch extends Activity {
 				case cBluetooth.USER_STOP_INITIATED:
 					suppressMessage = true;
 					break;
-	          	}
+				case cBluetooth.BL_DEVICE_NOT_FOUND:
+					if (!suppressMessage) Toast.makeText(activity.getBaseContext(), "Device not found", Toast.LENGTH_SHORT).show();
+					activity.finish();
+					break;
+				}
           	}
         }
 	}
@@ -329,7 +334,8 @@ public class ActivityTouch extends Activity {
 			bl.sendDataByte(commandLeft);
 			bl.sendDataByte(commandRight);
     	}
-    	bl.BT_Connect(address, false);
+		bl.BT_Connect(BT_DeviceName, false);
+		suppressMessage = false;
 		// start timer onResume if set
 		if (iTimeOut > 0) {
 			startTimer();
@@ -346,12 +352,13 @@ public class ActivityTouch extends Activity {
 			bl.sendDataByte(commandRight);
     	}
     	bl.BT_onPause();
+		suppressMessage = true;  // regular exit
 		stopTimer();
     }
     
     private void loadPref(){
-    	SharedPreferences mySharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);  
-    	address = mySharedPreferences.getString("pref_MAC_address", address);			// the first time we load the default values
+    	SharedPreferences mySharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
+		BT_DeviceName = mySharedPreferences.getString("pref_BT_Device", BT_DeviceName);			// the first time we load the default values
     	xRperc = Integer.parseInt(mySharedPreferences.getString("pref_xRperc", String.valueOf(xRperc)));
     	show_Debug = mySharedPreferences.getBoolean("pref_Debug", false);
 		mixing = mySharedPreferences.getBoolean("pref_Mixing_active", true);

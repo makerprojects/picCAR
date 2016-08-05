@@ -37,7 +37,7 @@ public class ActivityMCU  extends Activity{
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_mcu);
 
-        address = (String) getResources().getText(R.string.default_MAC);
+        address = (String) getResources().getText(R.string.default_BtDevice);
         
         btn_flash_Read = (Button) findViewById(R.id.flash_Read);
         btn_flash_Write = (Button) findViewById(R.id.flash_Write);

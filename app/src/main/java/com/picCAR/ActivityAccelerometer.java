@@ -40,7 +40,6 @@ public class ActivityAccelerometer extends Activity implements SensorEventListen
     private int motorRight = 0;
     private boolean show_Debug;		// show debug information (from settings)
     private boolean mixing = true; // for backward compatibility
-    // private boolean BT_is_connect;	// bluetooth is connected
     private int xMax;		    	// limit on the X axis from settings  (0-10)
     private int yMax;		    	// limit on the Y axis from settings (0-10)
     private int yThreshold;  		// minimum value of PWM from settings 
@@ -53,11 +52,11 @@ public class ActivityAccelerometer extends Activity implements SensorEventListen
     private final int cChannelNeutral = 127;
     private final int cChannelMax = 0xFE; // equals 0xFE
     private final int cChannelMin = 0;
-    private String address;			// MAC-address from settings
+    private String BT_DeviceName;			// Bluetooth device name from settings
     private byte[] commandLeft = {(byte) cCommandHeader,cChannelLeft,cChannelNeutral};	// command buffer for left motor
     private byte[] commandRight = {(byte) cCommandHeader,cChannelRight,cChannelNeutral}; // command buffer for right motor
 
-    private final int pwnNeutral = 127;
+    private static boolean suppressMessage = false;
 
     private static String TAG = ActivityAccelerometer.class.getSimpleName();
 
@@ -70,8 +69,8 @@ public class ActivityAccelerometer extends Activity implements SensorEventListen
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_accelerometer);
-                
-        address = (String) getResources().getText(R.string.default_MAC);
+
+        BT_DeviceName = (String) getResources().getText(R.string.default_BtDevice);
         xMax = Integer.parseInt((String) getResources().getText(R.string.default_xMax));
         xR = Integer.parseInt((String) getResources().getText(R.string.default_xR));
         yMax = Integer.parseInt((String) getResources().getText(R.string.default_yMax));
@@ -100,7 +99,6 @@ public class ActivityAccelerometer extends Activity implements SensorEventListen
      
         @Override
         public void handleMessage(Message msg) {
-            boolean suppressMessage = false;
         	ActivityAccelerometer activity = mActivity.get();
           if (activity != null) {
           	switch (msg.what) {
@@ -125,6 +123,10 @@ public class ActivityAccelerometer extends Activity implements SensorEventListen
                 break;
             case cBluetooth.USER_STOP_INITIATED:
                 suppressMessage = true;
+                break;
+            case cBluetooth.BL_DEVICE_NOT_FOUND:
+                if (!suppressMessage) Toast.makeText(activity.getBaseContext(), "Device not found", Toast.LENGTH_SHORT).show();
+                activity.finish();
                 break;
             }
           }
@@ -260,9 +262,9 @@ public class ActivityAccelerometer extends Activity implements SensorEventListen
     }
    
     private void loadPref(){
-    	SharedPreferences mySharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);  
-    	
-    	address = mySharedPreferences.getString("pref_MAC_address", address);			// the first time we load the default values
+    	SharedPreferences mySharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
+
+        BT_DeviceName = mySharedPreferences.getString("pref_BT_Device", BT_DeviceName);			// the first time we load the default values
     	xMax = Integer.parseInt(mySharedPreferences.getString("pref_xMax", String.valueOf(xMax)));
     	xR = Integer.parseInt(mySharedPreferences.getString("pref_xR", String.valueOf(xR)));
     	yMax = Integer.parseInt(mySharedPreferences.getString("pref_yMax", String.valueOf(yMax)));
@@ -281,7 +283,8 @@ public class ActivityAccelerometer extends Activity implements SensorEventListen
             bl.sendDataByte(commandLeft);
             bl.sendDataByte(commandRight);
         }
-        bl.BT_Connect(address, false);
+        bl.BT_Connect(BT_DeviceName, false);
+        suppressMessage = false;
     	mSensorManager.registerListener(this, mAccel, SensorManager.SENSOR_DELAY_NORMAL);
         // start timer onResume if set
         if (iTimeOut > 0) {
@@ -299,6 +302,7 @@ public class ActivityAccelerometer extends Activity implements SensorEventListen
             bl.sendDataByte(commandRight);
         }
     	bl.BT_onPause();
+        suppressMessage = true;
     	mSensorManager.unregisterListener(this);
         stopTimer();
     }

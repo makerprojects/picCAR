@@ -14,6 +14,7 @@ import java.io.OutputStream;
 import java.lang.String;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Method;
+import java.util.Set;
 import java.util.UUID;
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
@@ -62,7 +63,8 @@ public class cBluetooth {
     public final static int BL_SOCKET_FAILED = 4;			// socket error 
     public final static int RECEIVE_MESSAGE = 5;			// receive message 
     public final static int USER_STOP_INITIATED = 6;        // user hit back button - shutting down
-       
+    public final static int BL_DEVICE_NOT_FOUND = 7;        // device not found in list of paired devices
+
     /**
      * Constructor. Prepares a new Bluetooth RFcomm connection to receiver
      * @param handler  A Handler to send messages back to the UI Activity
@@ -149,6 +151,7 @@ public class cBluetooth {
      * Start the service. Specifically start AcceptThread to begin a
      * session in listening (server) mode. Called by the Activity onResume()
     */
+    /*
     public synchronized void start() {
         if (D) Log.d(TAG, "start");
 
@@ -166,13 +169,16 @@ public class cBluetooth {
 
         setState(STATE_NONE);
     }
+    */
 
     /**
-     * Start the ConnectThread to initiate a connection to a remote device.
-     * @param address  The BluetoothDevice to connect (MAC address)
+     * Start the ConnectThread to initiate a connection to a remote device. Called by the
+     * Activity onResume()
+     * @param BT_DeviceName  The BluetoothDevice to connect to
      */
-    public synchronized void BT_Connect(String address, boolean listen_in) {
-        if (D) Log.d(TAG, "BT_Connect: connect to " + address);
+    public synchronized void BT_Connect(String BT_DeviceName, boolean listen_in) {
+        String address = "";
+        if (D) Log.d(TAG, "BT_Connect: connect to " + BT_DeviceName);
 
         // Cancel any thread attempting to make a connection
         if (mState == STATE_CONNECTING) {
@@ -189,10 +195,25 @@ public class cBluetooth {
         }
 
         // Start the thread to connect with the given device
-        BluetoothDevice device = mAdapter.getRemoteDevice(address);
-        mConnectThread = new ConnectThread(device);
-        mConnectThread.start();
-        setState(STATE_CONNECTING);
+        Set<BluetoothDevice> pairedDevices = mAdapter.getBondedDevices();
+        // If there are paired devices
+        if (pairedDevices.size() > 0) {
+            // Loop through paired devices
+            for (BluetoothDevice device : pairedDevices) {
+                // find device and store address....
+                if (BT_DeviceName.equals(device.getName())) {
+                    address= device.getAddress();
+                }
+            }
+        }
+        if (address.equals("")) {
+            mHandler.sendEmptyMessage(BL_DEVICE_NOT_FOUND);
+        } else {
+            BluetoothDevice device = mAdapter.getRemoteDevice(address);
+            mConnectThread = new ConnectThread(device);
+            mConnectThread.start();
+            setState(STATE_CONNECTING);
+        }
     }
 
     /**

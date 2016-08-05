@@ -31,7 +31,7 @@ public class ActivityButtons extends Activity {
 	private final int cChannelNeutral = 0x7F;
 	private final int cChannelMax = 0xFE; // equals 0xFE
 	private final byte cChannelMin = 0;
-	private String address;			// MAC-address from settings
+	private String BT_DeviceName;			// Bluetooth device name from settings
     private byte[] commandLeft = {(byte)cCommandHeader, cChannelLeft, (byte) cChannelNeutral};	// command buffer for left motor
     private byte[] commandRight = {(byte) cCommandHeader,cChannelRight, (byte) cChannelNeutral}; // command buffer for right motor
 	private boolean mixing = true; // for backward compatibility
@@ -43,6 +43,7 @@ public class ActivityButtons extends Activity {
 	private boolean right_up_sent = false;
 	private boolean left_down_sent = false;
 	private boolean left_up_sent = false;
+	private static boolean suppressMessage = false;
 
 	private static String TAG = ActivityButtons.class.getSimpleName();
 
@@ -55,8 +56,8 @@ public class ActivityButtons extends Activity {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_buttons);
-		
-		address = (String) getResources().getText(R.string.default_MAC);
+
+		BT_DeviceName = (String) getResources().getText(R.string.default_BtDevice);
 
 		loadPref();
 		
@@ -174,7 +175,6 @@ public class ActivityButtons extends Activity {
      
         @Override
         public void handleMessage(Message msg) {
-			boolean suppressMessage = false;
 			ActivityButtons activity = mActivity.get();
         	if (activity != null) {
         		switch (msg.what) {
@@ -198,6 +198,10 @@ public class ActivityButtons extends Activity {
 	                break;
 				case cBluetooth.USER_STOP_INITIATED:
 					suppressMessage = true;
+					break;
+				case cBluetooth.BL_DEVICE_NOT_FOUND:
+					if (!suppressMessage) Toast.makeText(activity.getBaseContext(), "Device not found", Toast.LENGTH_SHORT).show();
+					activity.finish();
 					break;
 				}
           	}
@@ -240,15 +244,16 @@ public class ActivityButtons extends Activity {
 	}
 
 	private void loadPref(){
-    	SharedPreferences mySharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);  
-    	address = mySharedPreferences.getString("pref_MAC_address", address);			// the first time we load the default values
+    	SharedPreferences mySharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
+		BT_DeviceName = mySharedPreferences.getString("pref_BT_Device", BT_DeviceName);			// the first time we load the default values
 		mixing = mySharedPreferences.getBoolean("pref_Mixing_active", true);
 	}
 
     @Override
     protected void onResume() {
     	super.onResume();
-    	bl.BT_Connect(address, false);
+    	bl.BT_Connect(BT_DeviceName, false);
+		suppressMessage = false;
 		// start timer onResume if set
 		if (iTimeOut > 0) {
 			startTimer();
@@ -259,6 +264,7 @@ public class ActivityButtons extends Activity {
     protected void onPause() {
     	super.onPause();
     	bl.BT_onPause();
+		suppressMessage = true;
 		stopTimer();
     }
     
