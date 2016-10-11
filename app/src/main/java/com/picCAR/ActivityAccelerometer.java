@@ -10,6 +10,13 @@ import android.bluetooth.BluetoothAdapter;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.res.Resources;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -18,6 +25,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.preference.PreferenceManager;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -32,8 +40,7 @@ public class ActivityAccelerometer extends Activity implements SensorEventListen
 	private SensorManager mSensorManager;
     private Sensor mAccel;
     private cBluetooth bl = null;
-    private ToggleButton LightButton;
-	
+
 	private int xAxis = 0;
     private int yAxis = 0;
     private int motorLeft = 0;
@@ -50,8 +57,6 @@ public class ActivityAccelerometer extends Activity implements SensorEventListen
     private final byte cChannelLeft = 0;
     private final byte cChannelRight = 1;
     private final int cChannelNeutral = 127;
-    private final int cChannelMax = 0xFE; // equals 0xFE
-    private final int cChannelMin = 0;
     private String BT_DeviceName;			// Bluetooth device name from settings
     private byte[] commandLeft = {(byte) cCommandHeader,cChannelLeft,cChannelNeutral};	// command buffer for left motor
     private byte[] commandRight = {(byte) cCommandHeader,cChannelRight,cChannelNeutral}; // command buffer for right motor
@@ -59,6 +64,24 @@ public class ActivityAccelerometer extends Activity implements SensorEventListen
     private static boolean suppressMessage = false;
 
     private static String TAG = ActivityAccelerometer.class.getSimpleName();
+
+    private int iLastLeft = 255;
+    private int iLastRight = 255;
+
+    // additional specific defs for processing...
+    private final static int SQUARE_SIDE_LENGTH = 180;
+    private final static int FINGER_CIRCLE_SIZE = 20;
+
+    // position of pointer
+    float x;
+    float y;
+    // display features
+    int dispWidth;
+    int dispHeight;
+    MyView v1;
+
+    // made public to allow debug output
+    float xRaw, yRaw;        // RAW-value from Accelerometer sensor
 
     // fail safe related definitions
     Timer timer = null;
@@ -68,7 +91,9 @@ public class ActivityAccelerometer extends Activity implements SensorEventListen
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_accelerometer);
+
+        v1 = new MyView(this);
+        setContentView(v1);
 
         BT_DeviceName = (String) getResources().getText(R.string.default_BtDevice);
         xMax = Integer.parseInt((String) getResources().getText(R.string.default_xMax));
@@ -155,6 +180,114 @@ public class ActivityAccelerometer extends Activity implements SensorEventListen
         }
     }
 
+    // Inserting Canvas related code...
+    class MyView extends View {
+
+        Paint fingerPaint, borderPaint, textPaint, alphaPaint, crossPaint, bigtextPaint;
+
+        Bitmap bitmap;
+        int imageW,imageH;
+
+        public MyView(Context context) {
+            super(context);
+            fingerPaint = new Paint();
+            fingerPaint.setAntiAlias(true);
+            fingerPaint.setColor(Color.RED);
+
+            borderPaint = new Paint();
+            borderPaint.setColor(Color.BLUE);
+            borderPaint.setAntiAlias(true);
+            borderPaint.setStyle(Paint.Style.STROKE);
+            borderPaint.setStrokeWidth(3);
+
+            crossPaint = new Paint();
+            crossPaint.setColor(Color.BLUE);
+            crossPaint.setAntiAlias(true);
+            crossPaint.setStyle(Paint.Style.STROKE);
+            crossPaint.setStrokeWidth(1);
+
+            textPaint = new Paint();
+            textPaint.setColor(Color.WHITE);
+            textPaint.setStyle(Paint.Style.FILL);
+            textPaint.setColor(Color.BLACK);
+            textPaint.setTextSize(14);
+
+            bigtextPaint = new Paint();
+            bigtextPaint.setStyle(Paint.Style.FILL);
+            bigtextPaint.setColor(Color.BLACK);
+            bigtextPaint.setTextSize(convertDpToPixel(25,getContext()));
+
+            alphaPaint = new Paint();
+            alphaPaint.setAlpha(75); // equals 0.3 on a range 0 .. 255
+
+            Drawable image = this.getResources().getDrawable(R.drawable.pikoder_logo);
+            imageW = image.getIntrinsicWidth() + (int) convertDpToPixel(5, context);
+            imageH = image.getIntrinsicHeight() + (int) convertDpToPixel(5, context);
+            Log.d(TAG, String.valueOf("bitmap width:"+image.getIntrinsicWidth()+"  height"+image.getIntrinsicHeight()));
+            bitmap = ((BitmapDrawable) image).getBitmap();
+        }
+
+
+        protected void onDraw(Canvas canvas) {
+            super.onDraw(canvas); // the default drawing
+
+            dispWidth = (int) Math.round((this.getRight()-this.getLeft())/2);
+            dispHeight = (int) Math.round((this.getBottom()-this.getTop())/2);
+
+            if (x < dispWidth - SQUARE_SIDE_LENGTH) {
+                x = dispWidth;
+                y = dispHeight;
+            }
+
+            canvas.drawRect(dispWidth - SQUARE_SIDE_LENGTH, dispHeight - SQUARE_SIDE_LENGTH, dispWidth + SQUARE_SIDE_LENGTH, dispHeight + SQUARE_SIDE_LENGTH, borderPaint);
+            canvas.drawLine(dispWidth - SQUARE_SIDE_LENGTH, dispHeight, dispWidth + SQUARE_SIDE_LENGTH,dispHeight, crossPaint);
+            canvas.drawLine(dispWidth, dispHeight- SQUARE_SIDE_LENGTH, dispWidth,dispHeight + SQUARE_SIDE_LENGTH, crossPaint);
+            canvas.drawCircle(x, y, FINGER_CIRCLE_SIZE, fingerPaint);
+
+            Log.d(TAG, String.valueOf("display getLeft: "+this.getLeft()+"  getRight: "+this.getRight()));
+            int bmx = this.getRight() - this.getLeft()- imageW;
+            int bmy =  this.getBottom()- this.getTop()- imageH;
+            Log.d(TAG, String.valueOf("bitmap position x:"+bmx+"  y"+bmy));
+            canvas.drawBitmap(bitmap, bmx, bmy, alphaPaint);
+
+            if(show_Debug){
+                canvas.drawText(String.valueOf("X:" + String.format("%.1f",xRaw) + "; xPWM:"+xAxis), 10, 75, textPaint);
+                canvas.drawText(String.valueOf("Y:" + String.format("%.1f",yRaw) + "; yPWM:"+yAxis), 10, 95, textPaint);
+                canvas.drawText(String.valueOf("Motor:"+String.valueOf(motorLeft)+" "+String.valueOf(motorRight)), 10, 115, textPaint);
+            }
+            canvas.drawText(String.valueOf(" Tilt your device"), dispWidth - SQUARE_SIDE_LENGTH, dispHeight + SQUARE_SIDE_LENGTH +convertDpToPixel(35,getContext()), bigtextPaint);
+        }
+    }
+
+    /**
+     * This method converts dp unit to equivalent pixels, depending on device density.
+     *
+     * @param dp A value in dp (density independent pixels) unit. Which we need to convert into pixels
+     * @param context Context to get resources and device specific display metrics
+     * @return A float value to represent px equivalent to dp depending on device density
+     */
+    public static float convertDpToPixel(float dp, Context context){
+        Resources resources = context.getResources();
+        DisplayMetrics metrics = resources.getDisplayMetrics();
+        float px = dp * ((float)metrics.densityDpi / DisplayMetrics.DENSITY_DEFAULT);
+        return px;
+    }
+
+    /**
+     * This method converts device specific pixels to density independent pixels.
+     *
+     * @param px A value in px (pixels) unit. Which we need to convert into db
+     * @param context Context to get resources and device specific display metrics
+     * @return A float value to represent dp equivalent to px value
+     */
+    public static float convertPixelsToDp(float px, Context context){
+        Resources resources = context.getResources();
+        DisplayMetrics metrics = resources.getDisplayMetrics();
+        float dp = px / ((float)metrics.densityDpi / DisplayMetrics.DENSITY_DEFAULT);
+        return dp;
+    }
+
+
     private final MyHandler mHandler = new MyHandler(this);
 
     private final static Runnable sRunnable = new Runnable() {
@@ -191,6 +324,10 @@ public class ActivityAccelerometer extends Activity implements SensorEventListen
         else if (yAxis < -pwmMax) yAxis = -pwmMax;        // negative - tilt forward
         else if (yAxis >= 0 && yAxis < yThreshold) yAxis = 0;
         else if (yAxis < 0 && yAxis > -yThreshold) yAxis = 0;
+
+        x = dispWidth + Math.round((xAxis * SQUARE_SIDE_LENGTH) / pwmMax);
+        y = dispHeight - Math.round((yAxis * SQUARE_SIDE_LENGTH) / pwmMax);
+        v1.invalidate();
 
         if (mixing) {
             if (xAxis > 0) {        // if tilt to left, slow down the left engine
@@ -237,28 +374,6 @@ public class ActivityAccelerometer extends Activity implements SensorEventListen
             bl.sendDataByte(commandLeft);
             bl.sendDataByte(commandRight);
         }
-
-        TextView textX = (TextView) findViewById(R.id.textViewX);
-        TextView textY = (TextView) findViewById(R.id.textViewY);
-        TextView mLeft = (TextView) findViewById(R.id.mLeft);
-        TextView mRight = (TextView) findViewById(R.id.mRight);
-        TextView textCmdSend = (TextView) findViewById(R.id.textViewCmdSend);
-        
-        if(show_Debug){
-        	textX.setText(String.valueOf("X:" + String.format("%.1f",xRaw) + "; xPWM:"+xAxis));
-	        textY.setText(String.valueOf("Y:" + String.format("%.1f",yRaw) + "; yPWM:"+yAxis));
-	        mLeft.setText(String.valueOf("MotorL:" + directionL + "." + motorLeft));
-	        mRight.setText(String.valueOf("MotorR:" + directionR + "." + motorRight));
-	 //       textCmdSend.setText(String.valueOf("Send:" + cmdSendL.toUpperCase(Locale.getDefault()) + cmdSendR.toUpperCase(Locale.getDefault())));
-        }
-        else{
-        	textX.setText("");
-        	textY.setText("");
-        	mLeft.setText("");
-        	mRight.setText("");
-        	textCmdSend.setText("");
-        }
-        
     }
    
     private void loadPref(){

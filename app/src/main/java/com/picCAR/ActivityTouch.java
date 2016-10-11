@@ -9,14 +9,19 @@ import android.bluetooth.BluetoothAdapter;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.res.Resources;
+import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Paint.Style;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.preference.PreferenceManager;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
@@ -34,13 +39,9 @@ public class ActivityTouch extends Activity {
 	private final byte cChannelRight = 1;
 	private boolean mixing = true; // for backward compatibility
 	private final int cChannelNeutral = 127;
-	private final int cChannelMax = 0xFE; // equals 0xFE
-	private final int cChannelMin = 0;
 	private String BT_DeviceName;			// Bluetooth device name from settings
 	private byte[] commandLeft = {(byte) cCommandHeader,cChannelLeft,cChannelNeutral};	// command buffer for left motor
 	private byte[] commandRight = {(byte) cCommandHeader,cChannelRight,cChannelNeutral}; // command buffer for right motor
-
-	private final int pwnNeutral = 127;
 
 
 	private final static int BIG_CIRCLE_SIZE = 120;
@@ -48,8 +49,6 @@ public class ActivityTouch extends Activity {
 	
     private int motorLeft = 0;
     private int motorRight = 0;
-	private int prev_xAxis = 255; // make sure that initial setting is executed
-	private int prev_yAxis = 0;
 
     private boolean show_Debug;			// show debug information (from settings)
     private int xRperc;					// pivot point from settings
@@ -156,12 +155,15 @@ public class ActivityTouch extends Activity {
 	
 	class MyView extends View {
 
-		Paint fingerPaint, borderPaint, textPaint;
+		Paint fingerPaint, borderPaint, textPaint, alphaPaint;
 
         int dispWidth;
         int dispHeight;
-        
-        float x;
+
+		Bitmap bitmap;
+		int imageW,imageH;
+
+		float x;
         float y;
         
         float xcirc;
@@ -188,7 +190,17 @@ public class ActivityTouch extends Activity {
 	        textPaint.setColor(Color.WHITE); 
 	        textPaint.setStyle(Style.FILL); 
 	        textPaint.setColor(Color.BLACK); 
-	        textPaint.setTextSize(14); 
+	        textPaint.setTextSize(14);
+
+			alphaPaint = new Paint();
+			alphaPaint.setAlpha(75); // equals 0.3 on a range 0 .. 255
+
+			Drawable image = this.getResources().getDrawable(R.drawable.pikoder_logo);
+			imageW = image.getIntrinsicWidth() + (int) convertDpToPixel(5, context);
+			imageH = image.getIntrinsicHeight() + (int) convertDpToPixel(5, context);
+			Log.d(TAG, String.valueOf("bitmap width:"+image.getIntrinsicWidth()+"  height"+image.getIntrinsicHeight()));
+			bitmap = ((BitmapDrawable) image).getBitmap();
+
         }
 
 
@@ -201,9 +213,15 @@ public class ActivityTouch extends Activity {
         		fingerPaint.setColor(Color.RED);
         	}
 
-            canvas.drawCircle(x, y, FINGER_CIRCLE_SIZE, fingerPaint);              
-            canvas.drawCircle(dispWidth, dispHeight, BIG_CIRCLE_SIZE, borderPaint);
-            
+			canvas.drawCircle(x, y, FINGER_CIRCLE_SIZE, fingerPaint);
+			canvas.drawRect(dispWidth - BIG_CIRCLE_SIZE, dispHeight - BIG_CIRCLE_SIZE, dispWidth + BIG_CIRCLE_SIZE, dispHeight + BIG_CIRCLE_SIZE, borderPaint);
+
+			Log.d(TAG, String.valueOf("display getLeft: "+this.getLeft()+"  getRight: "+this.getRight()));
+			int bmx = this.getRight() - this.getLeft()- imageW;
+			int bmy =  this.getBottom()- this.getTop()- imageH;
+			Log.d(TAG, String.valueOf("bitmap position x:"+bmx+"  y"+bmy));
+			canvas.drawBitmap(bitmap, bmx, bmy, alphaPaint);
+
             if(show_Debug){
 	            canvas.drawText(String.valueOf("X:"+xcirc), 10, 75, textPaint);
 	            canvas.drawText(String.valueOf("Y:"+(-ycirc)), 10, 95, textPaint);
@@ -263,7 +281,35 @@ public class ActivityTouch extends Activity {
         	return true;
         }
 	}
-	
+
+	/**
+	 * This method converts dp unit to equivalent pixels, depending on device density.
+	 *
+	 * @param dp A value in dp (density independent pixels) unit. Which we need to convert into pixels
+	 * @param context Context to get resources and device specific display metrics
+	 * @return A float value to represent px equivalent to dp depending on device density
+	 */
+	public static float convertDpToPixel(float dp, Context context){
+		Resources resources = context.getResources();
+		DisplayMetrics metrics = resources.getDisplayMetrics();
+		float px = dp * ((float)metrics.densityDpi / DisplayMetrics.DENSITY_DEFAULT);
+		return px;
+	}
+
+	/**
+	 * This method converts device specific pixels to density independent pixels.
+	 *
+	 * @param px A value in px (pixels) unit. Which we need to convert into db
+	 * @param context Context to get resources and device specific display metrics
+	 * @return A float value to represent dp equivalent to px value
+	 */
+	public static float convertPixelsToDp(float px, Context context){
+		Resources resources = context.getResources();
+		DisplayMetrics metrics = resources.getDisplayMetrics();
+		float dp = px / ((float)metrics.densityDpi / DisplayMetrics.DENSITY_DEFAULT);
+		return dp;
+	}
+
 	private void CalcMotor(float calc_x, float calc_y){
 
 		int xAxis = Math.round(calc_x*pwmMax/BIG_CIRCLE_SIZE);

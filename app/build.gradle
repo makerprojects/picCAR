@@ -8,6 +8,8 @@ android {
         applicationId "com.picCAR.app"
         minSdkVersion 17
         targetSdkVersion 17
+        versionCode 7
+        versionName "1.6"
     }
 
     buildTypes {
@@ -27,5 +29,5 @@ dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
     testCompile 'junit:junit:4.12'
     // compile "com.android.support:support-v4:24.0.0"
-    // compile 'com.google.android.gms:play-services-appindexing:8.1.0'
+    compile 'com.google.android.gms:play-services-appindexing:8.1.0'
 }

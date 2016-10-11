@@ -12,7 +12,7 @@
 			 android:key="pref_BT_Device"
 			 android:title="BT Device Name"
 			 android:summary="Bluetooth device name"
-			 android:defaultValue="@+string/default_BtDevice" />
+			 android:defaultValue="@string/default_BtDevice" />
 
 		<CheckBoxPreference
 			android:key="pref_Debug"
@@ -44,19 +44,19 @@
 			 android:key="pref_xMax"
 			 android:title="Limit on the X axis"
 			 android:summary="Limit on the X axis (sensitivity)"
-			 android:defaultValue="@+string/default_xMax" />
+			 android:defaultValue="@string/default_xMax" />
 	
 		<EditTextPreference
 			 android:key="pref_xR"
 			 android:title="Pivot point for motor (X axis)"
 			 android:summary="Pivot point for motor, above which one motor rotate in the opposite direction"
-			 android:defaultValue="@+string/default_xR" />
+			 android:defaultValue="@string/default_xR" />
 		
 		<EditTextPreference
 			 android:key="pref_yMax"
 			 android:title="Limit on the Y axis"
 			 android:summary="Limit on the Y axis (sensitivity)"
-			 android:defaultValue="@+string/default_yMax" />
+			 android:defaultValue="@string/default_yMax" />
 		
 	</PreferenceCategory>
 	
@@ -69,7 +69,7 @@
 			 android:key="pref_xRperc"
 			 android:title="Pivot point for motor (X axis) percent"
 			 android:summary="Pivot point for motor (in percent), above which one motor rotate in the opposite direction"
-			 android:defaultValue="@+string/default_xRperc" />
+			 android:defaultValue="@string/default_xRperc" />
 				
 	</PreferenceCategory>	
 			
