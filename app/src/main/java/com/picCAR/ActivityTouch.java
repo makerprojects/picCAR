@@ -13,8 +13,10 @@ import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Paint.Style;
+import android.graphics.Point;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
@@ -23,12 +25,15 @@ import android.os.Message;
 import android.preference.PreferenceManager;
 import android.util.DisplayMetrics;
 import android.util.Log;
+import android.view.Display;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.ViewGroup.LayoutParams;
 import android.widget.Toast;
 import android.widget.ToggleButton;
+
+import static com.picCAR.R.drawable.logo_final;
 
 public class ActivityTouch extends Activity {
 	
@@ -160,8 +165,9 @@ public class ActivityTouch extends Activity {
         int dispWidth;
         int dispHeight;
 
-		Bitmap bitmap;
-		int imageW,imageH;
+		Bitmap bitmap, logo;
+		int imageW,imageH,imagelW,imagelH;
+		Point size;
 
 		float x;
         float y;
@@ -201,12 +207,26 @@ public class ActivityTouch extends Activity {
 			Log.d(TAG, String.valueOf("bitmap width:"+image.getIntrinsicWidth()+"  height"+image.getIntrinsicHeight()));
 			bitmap = ((BitmapDrawable) image).getBitmap();
 
-        }
+			image = this.getResources().getDrawable(logo_final);
+			imagelH = image.getIntrinsicHeight();
+			imagelW = image.getIntrinsicWidth();
+			Display display = getWindowManager().getDefaultDisplay();
+			size = new Point();
+			display.getSize(size);
+			Log.d(TAG, String.valueOf("display width:"+size.x+"  height"+size.y));
+			float scale = (float) 0.75 * (float) size.y/ (float) imagelH;
+			Log.d(TAG, String.valueOf("scale: "+ scale));
+			logo = ((BitmapDrawable) image).getBitmap();
+			Log.d(TAG, String.valueOf("new logo size:"+Math.round(imagelW*scale)+"  height"+Math.round(imagelH*scale)));
+			imagelH = Math.round(imagelH*scale);
+			imagelW = Math.round(imagelW*scale);
+			logo = getResizedBitmap(logo, imagelW, imagelH);
+		}
 
 
         protected void onDraw(Canvas canvas) {
-        	dispWidth = (int) Math.round((this.getRight()-this.getLeft())/3.5);
-        	dispHeight = (int) Math.round((this.getBottom()-this.getTop())/1.7);
+			dispWidth = (int) Math.round(size.x/5);
+			dispHeight = (int) Math.round(size.y/3);
         	if(!drag){
         		x = dispWidth;
         		y = dispHeight;
@@ -222,7 +242,12 @@ public class ActivityTouch extends Activity {
 			Log.d(TAG, String.valueOf("bitmap position x:"+bmx+"  y"+bmy));
 			canvas.drawBitmap(bitmap, bmx, bmy, alphaPaint);
 
-            if(show_Debug){
+			bmx = (size.x - imagelW)/2;
+			bmy = (int) Math.round(size.y/32);
+			Log.d(TAG, String.valueOf("logo position x:"+bmx+"  y"+bmy));
+			canvas.drawBitmap(logo, bmx, bmy, alphaPaint);
+
+			if(show_Debug){
 	            canvas.drawText(String.valueOf("X:"+xcirc), 10, 75, textPaint);
 	            canvas.drawText(String.valueOf("Y:"+(-ycirc)), 10, 95, textPaint);
 	            canvas.drawText(String.valueOf("Motor:"+String.valueOf(motorLeft)+" "+String.valueOf(motorRight)), 10, 115, textPaint);
@@ -308,6 +333,21 @@ public class ActivityTouch extends Activity {
 		DisplayMetrics metrics = resources.getDisplayMetrics();
 		float dp = px / ((float)metrics.densityDpi / DisplayMetrics.DENSITY_DEFAULT);
 		return dp;
+	}
+
+	public Bitmap getResizedBitmap(Bitmap bm, int newWidth, int newHeight) {
+		int width = bm.getWidth();
+		int height = bm.getHeight();
+		float scaleWidth = ((float) newWidth) / width;
+		float scaleHeight = ((float) newHeight) / height;
+		// CREATE A MATRIX FOR THE MANIPULATION
+		Matrix matrix = new Matrix();
+		// RESIZE THE BIT MAP
+		matrix.postScale(scaleWidth, scaleHeight);
+
+		// "RECREATE" THE NEW BITMAP
+		Bitmap resizedBitmap = Bitmap.createBitmap(bm, 0, 0, width, height, matrix, false);
+		return resizedBitmap;
 	}
 
 	private void CalcMotor(float calc_x, float calc_y){
