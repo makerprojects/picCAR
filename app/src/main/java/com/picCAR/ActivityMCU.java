@@ -28,16 +28,16 @@ public class ActivityMCU  extends Activity{
 	private static EditText edit_AutoOFF;
 	private static String flash_success;
 	private static String error_get_data;
-	
-	private String address;			// MAC-address from settings 
-	private static StringBuilder sb = new StringBuilder();
-	
+	private String BT_DeviceName;			// Bluetooth device name from settings
+	private static StringBuilder sb = new StringBuilder(); // used to manage multi cycle messages
+	private static String TAG = ActivityMCU.class.getSimpleName();
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_mcu);
 
-        address = (String) getResources().getText(R.string.default_BtDevice);
+        BT_DeviceName = (String) getResources().getText(R.string.default_BtDevice);
         
         btn_flash_Read = (Button) findViewById(R.id.flash_Read);
         btn_flash_Write = (Button) findViewById(R.id.flash_Write);
@@ -46,11 +46,11 @@ public class ActivityMCU  extends Activity{
 
     	flash_success = (String) getResources().getText(R.string.flash_success);
     	error_get_data = (String) getResources().getText(R.string.error_get_data);
+
 		loadPref();
 		
 	    bl = new cBluetooth(mHandler);
-	    // bl.checkBTState();
-	    
+
 	    cb_AutoOFF.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
 				String str_to_send = "T=";
@@ -76,27 +76,26 @@ public class ActivityMCU  extends Activity{
 			public void onClick(View v) {
 				float num1 = 0;
 				String str_to_send = "T=";
-				
-    		
-				try {
+    			try {
 					num1 = Float.parseFloat(edit_AutoOFF.getText().toString());
 				} catch (NumberFormatException e) {
 					String err_data_entry = getString(R.string.err_data_entry); 
 					Toast.makeText(getBaseContext(), err_data_entry, Toast.LENGTH_SHORT).show();
 				}
-				
 				if(num1 > 0 && num1 < 100){	
 					DecimalFormat myFormatter = new DecimalFormat("00.0");
 					String output = myFormatter.format(num1);
 					str_to_send += String.valueOf(output.charAt(0)) + String.valueOf(output.charAt(1)) + String.valueOf(output.charAt(3));
 					Globals g = Globals.getInstance();	// store timeout in global variable
 					g.setData(((output.charAt(0) - '0') *100 + (output.charAt(1) - '0') * 10 + (output.charAt(3) - '0'))*100); // convert to millis
-				    Log.d(cBluetooth.TAG, "Send Flash Op:" + str_to_send);
-				    bl.sendData(str_to_send);
-					//Toast.makeText(getBaseContext(), str_to_send, Toast.LENGTH_SHORT).show();
+					if (Constants.IS_LOGGABLE) Log.v(TAG, "Send Timeout to MCU" + str_to_send);
+					output = output.replace(',','.');
+					if (output.charAt(0) == '0') output = output.substring(1);
+					edit_AutoOFF.setText(output);
+					bl.sendData(str_to_send);
 				}
-				else{
-					String err_range = getString(R.string.mcu_error_range); 
+				else {
+					String err_range = getString(R.string.mcu_error_range);
 					Toast.makeText(getBaseContext(), err_range, Toast.LENGTH_SHORT).show();
 				}
 			}
@@ -137,56 +136,39 @@ public class ActivityMCU  extends Activity{
 	            	Toast.makeText(activity.getBaseContext(), "Socket failed", Toast.LENGTH_SHORT).show();
 	            	activity.finish();
 	                break;
-	            case cBluetooth.RECEIVE_MESSAGE:								// if message is received 
-	            	byte[] readBuf = (byte[]) msg.obj;
-	            	String strIncom = new String(readBuf, 0, msg.arg1);
-	            	sb.append(strIncom);								// append string 
-					Log.i(cBluetooth.TAG, "Received: " + strIncom);
-	            	int myNum = 9999;
-	            	strIncom = strIncom.replace("\r","").replace("\n","");
-	            	if (strIncom.length() >= 3) {
-	            		try {
-	            			myNum = Integer.parseInt(strIncom);
-	            		} catch(NumberFormatException nfe) {
-	            			Toast.makeText(activity.getBaseContext(), "Could not parse " + nfe, Toast.LENGTH_SHORT).show();
-	            		} 
-	            	}    	
-	    	        
-	            	// int FDataLineIndex = sb.indexOf("FData:");					// string with Flash-data 
-	            	// int FWOKLineIndex = sb.indexOf("FWOK");						// string with the message of the successful record in Flash 
-	            	// int endOfLineIndex = sb.indexOf("\r\n");
-	
-	            	// if (FDataLineIndex >= 0 && endOfLineIndex > 0 && endOfLineIndex > FDataLineIndex) {
-	            	if (myNum < 1000)	{
-//	            		String sbprint = sb.substring(3, 5);
-		            	
-	            		//sbprint = sbprint.replace("\r","").replace("\n","");	            		
-	
-	            		// if(sbprint.substring(0, 1).equals("1")) cb_AutoOFF.setChecked(true);
-	            		// else cb_AutoOFF.setChecked(false);
-	            		
-	            		// Float edit_data_AutoOFF = Float.parseFloat(sbprint.substring(1, 3))/10;
-	            		Float edit_data_AutoOFF = Float.parseFloat(strIncom)/10;
-	            		edit_AutoOFF.setText(String.valueOf(edit_data_AutoOFF));
-	            		
-	            		if (edit_data_AutoOFF != 0)  cb_AutoOFF.setChecked(true); 
-	            		else cb_AutoOFF.setChecked(false);
+	            case cBluetooth.RECEIVE_MESSAGE:								// if message is received
+					byte[] readBuf = (byte[]) msg.obj;
+					String strIncom = new String(readBuf, 0, msg.arg1);
+					strIncom = strIncom.replace("\r","").replace("\n","");
+					sb.append(strIncom);								// append string
 
-		            	Toast.makeText(activity.getBaseContext(), "Reading timeout data completed", Toast.LENGTH_SHORT).show();
-	            		
-	            		// sb.delete(0, sb.length());
-	                }
-	            	// else if (FWOKLineIndex >= 0 && endOfLineIndex > 0 && endOfLineIndex > FWOKLineIndex) {
-	            	else if (strIncom.length() == 1)	{ 	// received '!' as acknoledge of flushing
-	            		Toast.makeText(activity.getBaseContext(), flash_success, Toast.LENGTH_SHORT).show();
-	            		sb.delete(0, sb.length());
-	            	}
-	            	// else if(endOfLineIndex > 0) {
-	            	else if (strIncom.length() > 0) {		// received something...
-	            		Toast.makeText(activity.getBaseContext(), error_get_data, Toast.LENGTH_SHORT).show();
-	            		// sb.delete(0, sb.length());
-	            	}
-	            	break;    
+					float myNum = 9999;
+
+					Log.v(TAG, "Newly received: " + strIncom + "sb: " + sb.toString());
+
+					if (strIncom.equals("!")) { // received '!' as acknoledge of flushing
+						Toast.makeText(activity.getBaseContext(), flash_success, Toast.LENGTH_SHORT).show();
+						sb.delete(0, sb.length());
+					}
+
+					if (sb.length() >= 3) {
+						try {
+							myNum = Float.parseFloat(sb.toString());
+						} catch (NumberFormatException nfe) {
+							Toast.makeText(activity.getBaseContext(), "Could not parse " + nfe, Toast.LENGTH_SHORT).show();
+							sb.delete(0, sb.length());
+						}
+					}
+
+					if (myNum < 1000) {
+						Float edit_data_AutoOFF = myNum/10;
+						edit_AutoOFF.setText(String.valueOf(edit_data_AutoOFF));
+						sb.delete(0, sb.length());
+						if (edit_data_AutoOFF != 0)  cb_AutoOFF.setChecked(true);
+						else cb_AutoOFF.setChecked(false);
+						Toast.makeText(activity.getBaseContext(), "Reading timeout data completed", Toast.LENGTH_SHORT).show();
+					}
+					break;
 	            }
             }
     	}
@@ -199,8 +181,8 @@ public class ActivityMCU  extends Activity{
 	};
 	
     private void loadPref(){
-    	SharedPreferences mySharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);  
-    	address = mySharedPreferences.getString("pref_MAC_address", address);			// the first time we load the default values
+    	SharedPreferences mySharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
+		BT_DeviceName = mySharedPreferences.getString("pref_BT_Device", BT_DeviceName);			// the first time we load the default values
 	}
     
     @Override
@@ -210,7 +192,7 @@ public class ActivityMCU  extends Activity{
     	if(cb_AutoOFF.isChecked()) edit_AutoOFF.setEnabled(true);
     	else edit_AutoOFF.setEnabled(false);
     	
-    	bl.BT_Connect(address, true);
+    	bl.BT_Connect(BT_DeviceName, true);
     }
 
     @Override
