@@ -61,7 +61,6 @@
         android:layout_below="@+id/right"
         android:layout_alignParentRight="true"
         android:layout_alignParentEnd="true"
-        android:paddingTop="40sp"
         android:layout_marginTop="20sp" />
 
     <ImageView
