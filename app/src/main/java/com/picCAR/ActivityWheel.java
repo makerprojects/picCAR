@@ -229,9 +229,7 @@ public class ActivityWheel extends Activity implements SensorEventListener  {
         else if(xAxis < -pwmMax) xAxis = -pwmMax;		// negative - tilt right 
         
         if(yAxis > pwmMax) yAxis = pwmMax;
-        else if(yAxis < -pwmMax) yAxis = -pwmMax;		// negative - tilt forward 
-        else if(yAxis >= 0 && yAxis < yThreshold) yAxis = 0;
-        else if(yAxis < 0 && yAxis > -yThreshold) yAxis = 0;
+        else if(yAxis < -pwmMax) yAxis = -pwmMax;
 
 		if (mixing) {
 			if (xAxis > 0) {        // if tilt to left, slow down the left engine
