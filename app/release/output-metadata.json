@@ -1,20 +1,20 @@
 {
-  "version": 1,
+  "version": 3,
   "artifactType": {
     "type": "APK",
     "kind": "Directory"
   },
-  "applicationId": "com.btRC.app",
+  "applicationId": "com.picCAR.app",
   "variantName": "release",
   "elements": [
     {
       "type": "SINGLE",
       "filters": [],
-      "properties": [],
-      "versionCode": 1,
-      "versionName": "1",
-      "enabled": true,
+      "attributes": [],
+      "versionCode": 10,
+      "versionName": "1.9",
       "outputFile": "app-release.apk"
     }
-  ]
+  ],
+  "elementType": "File"
 }

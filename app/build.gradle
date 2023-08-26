@@ -1,14 +1,14 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 29
+    compileSdkVersion 31
 
     defaultConfig {
         applicationId "com.picCAR.app"
         minSdkVersion 17
-        targetSdkVersion 29
-        versionCode 9
-        versionName "1.8"
+        targetSdkVersion 31
+        versionCode 10
+        versionName "1.9"
     }
 
     buildTypes {
