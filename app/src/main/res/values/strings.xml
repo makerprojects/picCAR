@@ -2,7 +2,7 @@
 <resources>
     
     <string name="app_name">picCAR</string>
-    <string name="app_name_version">picCAR 1.5</string>
+    <string name="app_name_version">picCAR 1.8</string>
     <string name="menu_app_settings">APP Settings</string>
     <string name="menu_ssc_settings">SSC Settings</string>
     <string name="menu_about">About picCAR</string>
